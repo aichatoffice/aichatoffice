@@ -1,6 +1,7 @@
 import type React from "react"
 import { useNavigate } from "react-router-dom"
 import { createContext, useContext, useState, useEffect } from "react"
+import { isElectron, getIpcRenderer } from '../utils/electron'
 
 interface FileItem {
   id: number
@@ -20,6 +21,28 @@ interface FileContextType {
 
 const FileContext = createContext<FileContextType | null>(null)
 
+const apiRequest = async (options: {
+  method?: string;
+  path: string;
+  body?: any;
+}) => {
+  if (!isElectron() || process.env.NODE_ENV === 'development') {
+    // 开发环境或非 Electron 环境使用普通 fetch
+    const response = await fetch(options.path, {
+      method: options.method,
+      body: options.body
+    });
+    return response.json();
+  } else {
+    // 生产环境使用 IPC 通信
+    const ipcRenderer = getIpcRenderer();
+    if (!ipcRenderer) {
+      throw new Error('IPC Renderer not available');
+    }
+    return ipcRenderer.invoke('api-request', options);
+  }
+};
+
 export function FileProvider({ children }: { children: React.ReactNode }) {
   const [files, setFiles] = useState<FileItem[]>([])
   const [filesLoading, setFilesLoading] = useState<boolean>(false)
@@ -28,8 +51,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
   const getFile = async () => {
     try {
       setFilesLoading(true)
-      const response = await fetch('/showcase/files')
-      const data = await response.json()
+      const data = await apiRequest({
+        path: '/showcase/files'
+      })
       setFiles(data)
       setFilesLoading(false)
     } catch (error) {
@@ -42,12 +66,12 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await fetch('/showcase/file', {
+      const data = await apiRequest({
         method: 'POST',
+        path: '/showcase/file',
         body: formData
       })
       getFile()
-      const data = await response.json()
       navigate(`/chat/${data.id}`)
     } catch (error) {
       console.error('Error uploading file:', error)
@@ -56,8 +80,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
 
   const deleteFile = async (id: number) => {
     try {
-      await fetch(`/showcase/file/${id}`, {
-        method: 'DELETE'
+      await apiRequest({
+        method: 'DELETE',
+        path: `/showcase/file/${id}`
       })
       setFiles(files.filter((file) => file.id !== id))
       navigate('/')
@@ -68,9 +93,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
 
   const getPreviewUrl = async (id: string) => {
     try {
-      const response = await fetch(`/showcase/${id}/preview/url`)
-      const data = await response.json()
-      return data
+      return await apiRequest({
+        path: `/showcase/${id}/preview/url`
+      })
     } catch (error) {
       console.error('Error getting preview url:', error)
     }

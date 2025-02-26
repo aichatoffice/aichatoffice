@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from 'electron'
+import { app, BrowserWindow, screen, ipcMain } from 'electron'
 import path from 'node:path'
 import fs from "fs";
 import remote from "@electron/remote/main/index.js";
@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 
 let mainWindow
 const appDir = path.dirname(app.getAppPath());
-const confDir = path.join(app.getPath("home"), ".config", "secretnote");
+const confDir = path.join(app.getPath("home"), ".config", "aichatoffice");
 const windowStatePath = path.join(confDir, "windowState.json");
 const isDevelopment = process.env.NODE_ENV === 'development';
 // 初始化window
@@ -20,12 +20,48 @@ let workspaces = []; // workspaceDir, id, browserWindow, tray, hideShortcut
 
 remote.initialize();
 
+const API_BASE_URL = 'https://turbo-demo.shimorelease.com';
+
 const isOpenAsHidden = function () {
   return 1 === workspaces.length && openAsHidden;
 };
 
+// 添加 IPC 处理器
+const setupIPCHandlers = () => {
+  ipcMain.handle('api-request', async (event, options) => {
+    try {
+      const { method = 'GET', path, body } = options;
+      const url = `${API_BASE_URL}${path}`;
+
+      const fetchOptions = {
+        method,
+        headers: {
+          'Origin': API_BASE_URL
+        }
+      };
+
+      if (body) {
+        if (body instanceof FormData) {
+          fetchOptions.body = body;
+        } else {
+          fetchOptions.body = JSON.stringify(body);
+          fetchOptions.headers['Content-Type'] = 'application/json';
+        }
+      }
+
+      const response = await fetch(url, fetchOptions);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  });
+};
+
 app.whenReady().then(() => {
-  initMainWindow()
+  setupIPCHandlers();
+  initMainWindow();
 })
 
 const initMainWindow = () => {
@@ -42,7 +78,7 @@ const initMainWindow = () => {
   let workArea;
   try {
     defaultWidth = Math.floor(screen.getPrimaryDisplay().size.width * 0.8);
-    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.8);
+    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.9);
     workArea = screen.getPrimaryDisplay().workArea;
   } catch (e) {
     console.error(e);
@@ -69,7 +105,7 @@ const initMainWindow = () => {
       windowState.height = Math.min(defaultHeight, workArea.height);
     }
 
-    if (x >= workArea.width * 0.8 || y >= workArea.height * 0.8) {
+    if (x >= workArea.width * 0.8 || y >= workArea.height * 0.9) {
       resetToCenter = true;
     }
   }
@@ -99,7 +135,8 @@ const initMainWindow = () => {
       webviewTag: true,
       webSecurity: false,
       contextIsolation: false,
-      autoplayPolicy: "user-gesture-required" // 桌面端禁止自动播放多媒体 https://github.com/siyuan-note/siyuan/issues/7587
+      autoplayPolicy: "user-gesture-required",
+      devTools: true
     },
     icon: path.join(appDir, "stage", "icon-large.png"),
   });
@@ -154,8 +191,7 @@ const initMainWindow = () => {
       app.quit();
     });
   } else {
-    // 生产环境下的路径需要调整
-    const indexPath = path.join(__dirname, '../dist/index.html');
+    const indexPath = path.join(process.resourcesPath, 'dist/index.html');
     console.log('Loading production path:', indexPath);
     mainWindow.loadFile(indexPath).catch((error) => {
       writeLog("load main index failed: " + error);
@@ -168,6 +204,12 @@ const initMainWindow = () => {
       mainWindow.webContents.send("secretnote-save-close", false);
     }
     // event.preventDefault();
+  });
+
+  // 添加以下代码来帮助调试
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.log('页面加载失败:', errorCode, errorDescription);
+    writeLog(`页面加载失败: ${errorCode} ${errorDescription}`);
   });
 }
 

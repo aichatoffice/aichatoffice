@@ -23,11 +23,23 @@
     "directories": {
       "output": "dist_electron"
     },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
     "mac": {
       "icon": "public/logo.png",
       "target": [
         "dmg"
-      ]
+      ],
+      "identity": null,
+      "hardenedRuntime": false
     },
     "win": {
       "icon": "public/logo.png",

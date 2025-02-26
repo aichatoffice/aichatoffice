@@ -4,6 +4,7 @@ import { ChevronRight, Copy, ThumbsUp, ThumbsDown, Volume2, Settings2, Send } fr
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/providers/LanguageContext"
 import { useParams } from "react-router-dom"
+import avatar from "@/assets/avatar.png"
 
 interface Message {
   id: number
@@ -96,7 +97,7 @@ export default function DocumentChat() {
               <div className="space-y-4 text-sm">
                 <div className="flex gap-3">
                   <img
-                    src="/src/assets/avatar.png"
+                    src={avatar}
                     alt="Chat Icon"
                     width={28}
                     height={28}
@@ -131,7 +132,7 @@ export default function DocumentChat() {
                 {messages.map((message) => (
                   <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
                     {message.role === "assistant" && <img
-                      src="/images/avatar.png"
+                      src={avatar}
                       alt="Chat Icon"
                       width={28}
                       height={28}
@@ -185,7 +186,7 @@ export default function DocumentChat() {
                     }
                   }}
                 />
-                <Button onClick={handleSendMessage} size="icon" className="bg-blue-500 text-white">
+                <Button onClick={handleSendMessage} size="icon" className="bg-blue-500 text-white" disabled={message.length === 0}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>

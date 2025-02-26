@@ -23,6 +23,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/providers/LanguageContext"
 import { useFiles } from "@/providers/FileContext"
+import documentPreviewImg from '@/assets/document_preview.png'
+import aiPoweredImg from '@/assets/ai_powered.png'
+import multiFileImg from '@/assets/multi_file.png'
+import seamlessWorkflowImg from '@/assets/seamless_workflow.png'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -196,7 +200,7 @@ export default function Home() {
           </div>
           <div className="order-1 lg:order-2">
             <img
-              src="/src/assets/document_preview.png"
+              src={documentPreviewImg}
               alt="Smart Document Processing"
               width={500}
               height={300}
@@ -209,7 +213,7 @@ export default function Home() {
         <div className="grid lg:grid-cols-2 gap-12 mb-20 items-center">
           <div>
             <img
-              src="/src/assets/ai_powered.png"
+              src={aiPoweredImg}
               alt="Real-time Collaboration"
               width={500}
               height={300}
@@ -256,7 +260,7 @@ export default function Home() {
           </div>
           <div className="order-1 lg:order-2">
             <img
-              src="/src/assets/multi_file.png"
+              src={multiFileImg}
               alt="Advanced Security"
               width={500}
               height={300}
@@ -269,7 +273,7 @@ export default function Home() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <img
-              src="/src/assets/seamless_workflow.png"
+              src={seamlessWorkflowImg}
               alt="Workflow Automation"
               width={500}
               height={300}
