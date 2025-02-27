@@ -13,9 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useState, useRef } from "react"
-import { useLanguage } from "@/providers/LanguageContext"
 import { useFiles } from "@/providers/FileContext"
-import type { Language } from "@/providers/LanguageContext"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useLocation, Outlet } from "react-router-dom"
 import { Link } from "react-router-dom"
@@ -26,14 +24,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useIntl } from "react-intl"
 
+interface ClientLayoutProps {
+  onLanguageChange: (locale: string) => void;
+  currentLocale: string;
+}
 
-function ClientLayoutContent() {
+function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const { language, setLanguage, t } = useLanguage()
+  const { formatMessage: f } = useIntl()
   const { files, uploadFile, deleteFile, filesLoading } = useFiles()
   const location = useLocation()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [locale, setLocale] = useState(currentLocale)
 
   const handleNewChatClick = () => {
     fileInputRef.current?.click()
@@ -51,7 +55,7 @@ function ClientLayoutContent() {
       <div className="p-4 border-b border-gray-700 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <MessageSquarePlus className="h-6 w-6 text-white" />
-          <Link to="/" className="text-[22px] font-bold text-white">{t("chatOffice")}</Link>
+          <Link to="/" className="text-[22px] font-bold text-white">{f({ id: "chatOffice" })}</Link>
         </div>
         <Button
           variant="ghost"
@@ -70,7 +74,7 @@ function ClientLayoutContent() {
           onClick={handleNewChatClick}
         >
           <MessageSquarePlus className="mr-2 h-4 w-4" />
-          {t("newChat")}
+          {f({ id: "newChat" })}
         </Button>
         <input
           type="file"
@@ -83,7 +87,7 @@ function ClientLayoutContent() {
 
       <ScrollArea className="flex-1 w-full px-2">
         <div className="py-4 space-y-2 w-full">
-          <h3 className="text-sm font-semibold text-gray-400 mb-2 px-2">{t("recentFiles")}</h3>
+          <h3 className="text-sm font-semibold text-gray-400 mb-2 px-2">{f({ id: "recentFiles" })}</h3>
           {filesLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-4 w-4 animate-spin text-gray-300 mt-20" />
@@ -136,13 +140,16 @@ function ClientLayoutContent() {
           <Globe className="h-4 w-4" />
           <select
             className="bg-transparent outline-none text-white"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
+            value={locale}
+            onChange={(e) => {
+              setLocale(e.target.value)
+              onLanguageChange(e.target.value)
+            }}
           >
-            <option value="en" className="text-black">
+            <option value="en-US" className="text-black">
               English
             </option>
-            <option value="zh" className="text-black">
+            <option value="zh-CN" className="text-black">
               中文
             </option>
           </select>
@@ -184,7 +191,7 @@ function ClientLayoutContent() {
             <Sidebar />
           </SheetContent>
         </Sheet>
-        <span className="text-xl font-bold text-white">{t("chatOffice")}</span>
+        <span className="text-xl font-bold text-white">{f({ id: "chatOffice" })}</span>
         <div className="w-10" />
       </div>
 
@@ -199,7 +206,7 @@ function ClientLayoutContent() {
   )
 }
 
-export default function ClientLayout() {
-  return <ClientLayoutContent />
+export default function ClientLayout({ onLanguageChange, currentLocale }: ClientLayoutProps) {
+  return <ClientLayoutContent onLanguageChange={onLanguageChange} currentLocale={currentLocale} />
 }
 

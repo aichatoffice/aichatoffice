@@ -25,7 +25,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/showcase': {
-        target: 'http://localhost:8000',  // 设置基础 URL
+        target: 'https://turbo-demo.shimorelease.com',  // 设置基础 URL
         changeOrigin: true
       }
     }

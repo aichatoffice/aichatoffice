@@ -2,17 +2,16 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Copy, ThumbsUp, ThumbsDown, Volume2, Settings2, Send } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useLanguage } from "@/providers/LanguageContext"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
-
+import { useIntl } from "react-intl"
 interface Message {
   id: number
   role: "assistant" | "user"
   content: string
 }
 export default function DocumentChat() {
-  const { t } = useLanguage()
+  const { formatMessage: f } = useIntl()
   const { id: documentId = '' } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [messages, setMessages] = useState<Message[]>([
@@ -20,12 +19,12 @@ export default function DocumentChat() {
       id: Date.now(),
       role: "assistant",
       content:
-        t("chat.greeting.1") + "\n\n" +
-        t("chat.greeting.2") + "\n\n" +
-        t("chat.greeting.3") + "\n\n" +
-        t("chat.greeting.4") + "\n\n" +
-        t("chat.greeting.5") + "\n\n" +
-        t("chat.greeting.6"),
+        f({ id: "chat.greeting.1" }) + "\n\n" +
+        f({ id: "chat.greeting.2" }) + "\n\n" +
+        f({ id: "chat.greeting.3" }) + "\n\n" +
+        f({ id: "chat.greeting.4" }) + "\n\n" +
+        f({ id: "chat.greeting.5" }) + "\n\n" +
+        f({ id: "chat.greeting.6" }),
 
     }
   ])
@@ -50,7 +49,7 @@ export default function DocumentChat() {
       {
         id: Date.now() + 1,
         role: "assistant",
-        content: t("chat.summary.2"),
+        content: f({ id: "chat.summary.2" }),
       },
     ])
     setMessages(newMessages)
@@ -62,12 +61,12 @@ export default function DocumentChat() {
       {
         id: Date.now() + 1,
         role: "user",
-        content: t("chat.summary"),
+        content: f({ id: "chat.summary" }),
       },
       {
         id: Date.now() + 2,
         role: "assistant",
-        content: t("chat.summary.1"),
+        content: f({ id: "chat.summary.1" }),
       },
     ])
     setMessages(newMessages)
@@ -104,14 +103,14 @@ export default function DocumentChat() {
                     className="object-cover flex-shrink-0 self-start"
                   />
                   <div className="space-y-4">
-                    <p>{t("chat.greeting.1")}</p>
-                    <p>{t("chat.greeting.2")}</p>
+                    <p>{f({ id: "chat.greeting.1" })}</p>
+                    <p>{f({ id: "chat.greeting.2" })}</p>
                     <ul className="list-disc pl-4 space-y-2">
-                      <li>{t("chat.greeting.3")}</li>
-                      <li>{t("chat.greeting.4")}</li>
-                      <li>{t("chat.greeting.5")}</li>
+                      <li>{f({ id: "chat.greeting.3" })}</li>
+                      <li>{f({ id: "chat.greeting.4" })}</li>
+                      <li>{f({ id: "chat.greeting.5" })}</li>
                     </ul>
-                    <p>{t("chat.greeting.6")}</p>
+                    <p>{f({ id: "chat.greeting.6" })}</p>
                   </div>
                 </div>
 
@@ -124,7 +123,7 @@ export default function DocumentChat() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                     </svg>
                   </div>
-                  <span>{t("chat.summary")}</span>
+                  <span>{f({ id: "chat.summary" })}</span>
                 </button>
               </div>
             ) : (
@@ -176,7 +175,7 @@ export default function DocumentChat() {
             <div className="p-4 border-t border-gray-200">
               <div className="flex gap-2">
                 <Input
-                  placeholder={t("chat.placeholder")}
+                  placeholder={f({ id: "chat.placeholder" })}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => {

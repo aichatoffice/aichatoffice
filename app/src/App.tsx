@@ -2,33 +2,47 @@ import { RouterProvider, createHashRouter } from 'react-router-dom'
 import ClientLayout from './layouts'
 import HomePage from './views/homepage'
 import ChatPage from './views/chatpage'
-import { LanguageProvider } from './providers/LanguageContext'
 import { FileProvider } from './providers/FileContext'
+import { IntlProvider } from "react-intl"
+import zh from './locales/zh-CN'
+import en from './locales/en-Us'
 import './App.css'
+import { useState } from 'react'
 
-const router = createHashRouter([
-  {
-    path: '/',
-    element: (
-      <LanguageProvider>
-        <FileProvider>
-          <ClientLayout />
-        </FileProvider>
-      </LanguageProvider>
-    ),
-    children: [
-      {
-        path: '/',
-        element: <HomePage />
-      },
-      {
-        path: '/chat/:id',
-        element: <ChatPage />
-      }
-    ]
-  }
-])
+const messages: Record<string, any> = {
+  'zh-CN': zh,
+  'en-US': en
+}
+
+const defaultLocale = navigator.language.split('-')[0] === 'zh' ? 'zh-CN' : 'en-US';
 
 export default function App() {
-  return <RouterProvider router={router} />
+  const [locale, setLocale] = useState(defaultLocale);
+
+  const router = createHashRouter([
+    {
+      path: '/',
+      element: (
+        <FileProvider>
+          <ClientLayout onLanguageChange={setLocale} currentLocale={locale} />
+        </FileProvider>
+      ),
+      children: [
+        {
+          path: '/',
+          element: <HomePage />
+        },
+        {
+          path: '/chat/:id',
+          element: <ChatPage />
+        }
+      ]
+    }
+  ]);
+
+  return (
+    <IntlProvider locale={locale} messages={messages[locale]} defaultLocale="zh-CN">
+      <RouterProvider router={router} />
+    </IntlProvider>
+  );
 }
