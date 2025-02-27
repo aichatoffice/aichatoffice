@@ -22,7 +22,7 @@
 
 <body>
   <div id="bg" style="width: 100%;display: flex;justify-content: space-around;height: 100%;">
-    <img style="width:36vh;align-self: center;" src="../public/avatar.png" />
+    <img style="height:calc(100vh - 35px);align-self: top;" src="icon.png" />
   </div>
   <div style="position: absolute;bottom: 0;width: 100%;">
     <div style="position: absolute;height: 1px;background-color: #3b3e43;width: 100%;top:0"></div>
@@ -51,7 +51,12 @@
     }
     (async () => {
       const v = getSearch('v')
-      document.getElementById('details').textContent = "v" + v + ' Booting AIChatOffice...'
+      document.getElementById('details').innerHTML = `
+      <div style="display: flex;align-items: center;">
+        <img src="logo.png" width="20" style="margin-right: 10px;" />
+        <span>v 1.0.0  Booting AIChatOffice...</span>
+      </div>
+      `
     })()
   </script>
 </body>

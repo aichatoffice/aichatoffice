@@ -26,20 +26,52 @@ const apiRequest = async (options: {
   path: string;
   body?: any;
 }) => {
-  if (!isElectron() || process.env.NODE_ENV === 'development') {
-    // 开发环境或非 Electron 环境使用普通 fetch
+  if (!isElectron()) {
+    // 非 Electron 环境使用普通 fetch
     const response = await fetch(options.path, {
       method: options.method,
       body: options.body
     });
     return response.json();
   } else {
-    // 在生产环境中使用 IPC 通信
+    // Electron 环境使用 IPC 通信
     const ipcRenderer = getIpcRenderer();
+    if (!ipcRenderer) {
+      throw new Error('IPC renderer not available');
+    }
+    // 添加一个标志来标识 FormData
+    const isFormData = options.body instanceof FormData;
+
+    // 如果是 FormData，将其转换为对象
+    let processedBody = options.body;
+    if (isFormData) {
+      processedBody = {
+        _isFormData: true,
+        entries: await Promise.all(Array.from(options.body.entries() as IterableIterator<[string, any]>).map(async ([key, value]) => {
+          if (value instanceof File) {
+            const content = await new Promise(resolve => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(value);
+            });
+            return [key, {
+              _isFile: true,
+              name: value.name,
+              type: value.type,
+              lastModified: value.lastModified,
+              size: value.size,
+              content
+            }];
+          }
+          return [key, value];
+        }))
+      };
+    }
+
     return await ipcRenderer.invoke('api-request', {
       method: options.method || 'GET',
       path: options.path,
-      body: options.body
+      body: processedBody
     });
   }
 };

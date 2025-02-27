@@ -38,173 +38,59 @@ try {
   app.exit();
 }
 
-const initMainWindow = () => {
-  protocol.handle('atom', (request) => {
-    const filePath = request.url.slice('atom://'.length)
-    return net.fetch(url.pathToFileURL(path.join(__dirname, filePath)).toString())
-  })
-
-  // 恢复主窗体状态
-  let oldWindowState = {};
-  try {
-    oldWindowState = JSON.parse(fs.readFileSync(windowStatePath, "utf8"));
-  } catch (e) {
-    fs.writeFileSync(windowStatePath, "{}");
-  }
-  let defaultWidth;
-  let defaultHeight;
-  let workArea;
-  try {
-    defaultWidth = Math.floor(screen.getPrimaryDisplay().size.width * 0.8);
-    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.9);
-    workArea = screen.getPrimaryDisplay().workArea;
-  } catch (e) {
-    console.error(e);
-  }
-  const windowState = Object.assign({}, {
-    isMaximized: false,
-    fullscreen: false,
-    isDevToolsOpened: false,
-    x: 0,
-    y: 0,
-    width: defaultWidth,
-    height: defaultHeight,
-  }, oldWindowState);
-
-  writeLog("windowStat [x=" + windowState.x + ", y=" + windowState.y + ", width=" + windowState.width + ", height=" + windowState.height + "], default [width=" + defaultWidth + ", height=" + defaultHeight + "], workArea [width=" + workArea.width + ", height=" + workArea.height + "]");
-
-  let resetToCenter = false;
-  let x = windowState.x;
-  let y = windowState.y;
-  if (workArea) {
-    // 窗口大于 workArea 时缩小会隐藏到左下角，这里使用最小值重置
-    if (windowState.width > workArea.width || windowState.height > workArea.height) { // 重启后窗口大小恢复默认问题 https://github.com/siyuan-note/siyuan/issues/7755
-      windowState.width = Math.min(defaultWidth, workArea.width);
-      windowState.height = Math.min(defaultHeight, workArea.height);
-    }
-
-    if (x >= workArea.width * 0.8 || y >= workArea.height * 0.9) {
-      resetToCenter = true;
-    }
-  }
-
-  if (x < 0 || y < 0) {
-    resetToCenter = true;
-  }
-
-  if (windowState.width < 493) {
-    windowState.width = 493;
-  }
-  if (windowState.height < 376) {
-    windowState.height = 376;
-  }
-
-  mainWindow = new BrowserWindow({
-    show: false,
-    width: windowState.width,
-    height: windowState.height,
-    minWidth: 493,
-    minHeight: 376,
-    fullscreenable: true,
-    fullscreen: windowState.fullscreen,
-    trafficLightPosition: { x: 8, y: 8 },
-    webPreferences: {
-      nodeIntegration: true,
-      webviewTag: true,
-      contextIsolation: true,
-      autoplayPolicy: "user-gesture-required",
-      devTools: true,
-      sandbox: true,
-      additionalArguments: [`--js-flags=--max-old-space-size=8192`],
-    },
-    icon: path.join(appDir, "stage", "icon-large.png"),
-  });
-  remote.enable(mainWindow.webContents);
-  if (resetToCenter) {
-    mainWindow.center();
-  } else {
-    mainWindow.setPosition(x, y);
-  }
-  // 主界面事件监听
-  mainWindow.once("ready-to-show", () => {
-    if (isOpenAsHidden()) {
-      mainWindow.minimize();
-    } else {
-      mainWindow.show();
-      if (windowState.isMaximized) {
-        mainWindow.maximize();
-      } else {
-        mainWindow.unmaximize();
-      }
-    }
-    if (bootWindow && !bootWindow.isDestroyed()) {
-      bootWindow.destroy();
-    }
-  });
-
-  if (isDevEnv) {
-    const waitDevServer = async () => {
-      try {
-        await mainWindow.loadURL('http://localhost:5173');
-        console.log('开发服务器加载成功');
-        // 在开发环境下打开开发者工具
-        mainWindow.webContents.openDevTools();
-      } catch (error) {
-        console.log('等待开发服务器启动...', error.message);
-        if (global.retryCount === undefined) {
-          global.retryCount = 0;
-        }
-        if (global.retryCount < 30) {
-          global.retryCount++;
-          setTimeout(waitDevServer, 1000);
-        } else {
-          console.error('开发服务器启动失败，请检查 vite 配置');
-          app.quit();
-        }
-      }
-    };
-    waitDevServer().catch(error => {
-      console.error('开发服务器加载错误:', error);
-      app.quit();
-    });
-  } else {
-    const indexPath = path.join(process.resourcesPath, 'dist/index.html');
-    console.log('Loading production path:', indexPath);
-    mainWindow.loadFile(indexPath).catch((error) => {
-      writeLog("load main index failed: " + error);
-      console.error('加载页面失败:', error);
-    });
-  }
-
-  mainWindow.on("close", (event) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("AIChatOffice-save-close", false);
-    }
-    // event.preventDefault();
-  });
-
-  // 添加以下代码来帮助调试
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.log('页面加载失败:', errorCode, errorDescription);
-    writeLog(`页面加载失败: ${errorCode} ${errorDescription}`);
-  });
-}
-
 ipcMain.handle('api-request', async (event, options) => {
   const { method = 'GET', path, body } = options
   const url = `${localServer}:${kernelPort}${path}`
+  writeLog(`API request: ${method} ${path}`)
 
   try {
+    let requestBody;
+    const headers = {};
+
+    if (body && body._isFormData) {
+      // 重建 FormData
+      writeLog('Reconstructing FormData')
+      const formData = new FormData();
+      for (const [key, value] of body.entries) {
+        if (value && value._isFile) {
+          // 从 base64 重建文件
+          const base64Data = value.content.split(',')[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          const blob = new Blob([buffer], { type: value.type });
+          const file = new File([blob], value.name, {
+            type: value.type,
+            lastModified: value.lastModified
+          });
+          formData.append(key, file);
+        } else {
+          formData.append(key, value);
+        }
+      }
+      requestBody = formData;
+      writeLog('Request body is FormData');
+    } else if (body) {
+      headers['Content-Type'] = 'application/json';
+      requestBody = JSON.stringify(body);
+      writeLog(`Request body: ${requestBody}`);
+    }
+
     const response = await fetch(url, {
       method,
-      body,
-      headers: {
-        'Content-Type': body instanceof FormData ? 'multipart/form-data' : 'application/json'
-      }
+      body: requestBody,
+      headers
     })
-    return response.json()
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      writeLog(`API request failed: ${response.status} ${response.statusText}, Error: ${errorText}`)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+    }
+
+    const data = await response.json()
+    writeLog(`API response: ${JSON.stringify(data)}`)
+    return data
   } catch (error) {
-    writeLog(`API request failed: ${error.message}`)
+    writeLog(`API request failed: ${error.message}, URL: ${url}`)
     throw error
   }
 })
@@ -299,46 +185,14 @@ async function runServer() {
       resolve(false);
       return;
     }
-    // 创建配置文件目录
-    const configDir = path.join(confDir, "config");
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    writeLog("configDir: " + configDir);
-
-    // 生成运行时配置文件内容
-    const runtimeConfig = `
-[server]
-host = "0.0.0.0"
-port = ${kernelPort}
-enableAccessInterceptor = true
-enableAccessInterceptorRes = true
-embedPath = "dist"
-
-[leveldb]
-path = "${path.join(confDir, "leveldb")}"
-
-[host]
-downloadUrlPrefix = "${localServer}:${kernelPort}"
-previewUrlPrefix = "https://turbo-sdk.shimorelease.com"
-
-[case]
-resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "electron", "resource")}"
-`;
-
-    // 将配置写入文件
-    const configPath = path.join(configDir, "config.toml");
-    fs.writeFileSync(configPath, runtimeConfig);
-    writeLog("Config file written to: " + configPath);
-    writeLog("Config content: " + runtimeConfig);  // 添加日志以便调试
+    // 生成运行时配置文件
+    const configPath = generateRuntimeConfig()
 
     // 添加配置文件路径到启动参数
     const cmds = ["--config=" + configPath, "server"];
 
     writeLog(`ui version [${appVer}], booting kernel [${serverPath} ${cmds.join(" ")}]`);
 
-
-    let apiData;
     let count = 0;
     writeLog("checking kernel version");
 
@@ -418,7 +272,6 @@ resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "el
         writeLog("getServer: " + getServer());
         const apiResult = await net.fetch(getServer() + "/showcase/files");
         writeLog(apiResult)
-        apiData = await apiResult.json();
         break;
       } catch (e) {
         writeLog("get kernel version failed: " + e.message);
@@ -434,6 +287,166 @@ resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "el
     }
     resolve(true);
   })
+}
+
+const initMainWindow = () => {
+  protocol.handle('atom', (request) => {
+    const filePath = request.url.slice('atom://'.length)
+    return net.fetch(url.pathToFileURL(path.join(__dirname, filePath)).toString())
+  })
+
+  // 恢复主窗体状态
+  let oldWindowState = {};
+  try {
+    oldWindowState = JSON.parse(fs.readFileSync(windowStatePath, "utf8"));
+  } catch (e) {
+    fs.writeFileSync(windowStatePath, "{}");
+  }
+  let defaultWidth;
+  let defaultHeight;
+  let workArea;
+  try {
+    defaultWidth = Math.floor(screen.getPrimaryDisplay().size.width * 0.8);
+    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.9);
+    workArea = screen.getPrimaryDisplay().workArea;
+  } catch (e) {
+    console.error(e);
+  }
+  const windowState = Object.assign({}, {
+    isMaximized: false,
+    fullscreen: false,
+    isDevToolsOpened: false,
+    x: 0,
+    y: 0,
+    width: defaultWidth,
+    height: defaultHeight,
+  }, oldWindowState);
+
+  writeLog("windowStat [x=" + windowState.x + ", y=" + windowState.y + ", width=" + windowState.width + ", height=" + windowState.height + "], default [width=" + defaultWidth + ", height=" + defaultHeight + "], workArea [width=" + workArea.width + ", height=" + workArea.height + "]");
+
+  let resetToCenter = false;
+  let x = windowState.x;
+  let y = windowState.y;
+  if (workArea) {
+    // 窗口大于 workArea 时缩小会隐藏到左下角，这里使用最小值重置
+    if (windowState.width > workArea.width || windowState.height > workArea.height) { // 重启后窗口大小恢复默认问题 https://github.com/siyuan-note/siyuan/issues/7755
+      windowState.width = Math.min(defaultWidth, workArea.width);
+      windowState.height = Math.min(defaultHeight, workArea.height);
+    }
+
+    if (x >= workArea.width * 0.8 || y >= workArea.height * 0.9) {
+      resetToCenter = true;
+    }
+  }
+
+  if (x < 0 || y < 0) {
+    resetToCenter = true;
+  }
+
+  if (windowState.width < 493) {
+    windowState.width = 493;
+  }
+  if (windowState.height < 376) {
+    windowState.height = 376;
+  }
+
+  mainWindow = new BrowserWindow({
+    show: false,
+    width: windowState.width,
+    height: windowState.height,
+    minWidth: 493,
+    minHeight: 376,
+    fullscreenable: true,
+    fullscreen: windowState.fullscreen,
+    trafficLightPosition: { x: 8, y: 8 },
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webviewTag: true,
+      autoplayPolicy: "user-gesture-required",
+      devTools: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--js-flags=--max-old-space-size=8192`],
+    },
+    icon: path.join(appDir, "stage", "icon-large.png"),
+  });
+  remote.enable(mainWindow.webContents);
+  if (resetToCenter) {
+    mainWindow.center();
+  } else {
+    mainWindow.setPosition(x, y);
+  }
+  // 主界面事件监听
+  mainWindow.once("ready-to-show", () => {
+    if (isOpenAsHidden()) {
+      mainWindow.minimize();
+    } else {
+      mainWindow.show();
+      if (windowState.isMaximized) {
+        mainWindow.maximize();
+      } else {
+        mainWindow.unmaximize();
+      }
+    }
+    if (bootWindow && !bootWindow.isDestroyed()) {
+      bootWindow.destroy();
+    }
+  });
+
+  if (isDevEnv) {
+    const waitDevServer = async () => {
+      try {
+        await mainWindow.loadURL('http://localhost:5173');
+        console.log('开发服务器加载成功');
+        // 在开发环境下打开开发者工具
+        mainWindow.webContents.openDevTools();
+      } catch (error) {
+        console.log('等待开发服务器启动...', error.message);
+        if (global.retryCount === undefined) {
+          global.retryCount = 0;
+        }
+        if (global.retryCount < 30) {
+          global.retryCount++;
+          setTimeout(waitDevServer, 1000);
+        } else {
+          console.error('开发服务器启动失败，请检查 vite 配置');
+          app.quit();
+        }
+      }
+    };
+    waitDevServer().catch(error => {
+      console.error('开发服务器加载错误:', error);
+      app.quit();
+    });
+  } else {
+    const indexPath = path.join(process.resourcesPath, 'dist/index.html');
+    console.log('Loading production path:', indexPath);
+    mainWindow.loadFile(indexPath).catch((error) => {
+      writeLog("load main index failed: " + error);
+      console.error('加载页面失败:', error);
+    });
+  }
+
+  mainWindow.on("close", (event) => {
+    // 在 macOS 上,点击红色关闭按钮时只隐藏窗口
+    if (process.platform === 'darwin' && !app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      return;
+    }
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("AIChatOffice-save-close", false);
+    }
+    // event.preventDefault();
+  });
+
+  // 添加以下代码来帮助调试
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.log('页面加载失败:', errorCode, errorDescription);
+    writeLog(`页面加载失败: ${errorCode} ${errorDescription}`);
+  });
 }
 
 const showErrorWindow = (title, content) => {
@@ -490,6 +503,44 @@ const writeLog = (out) => {
     console.error(e);
   }
 };
+
+// 生成运行时配置文件
+function generateRuntimeConfig() {
+  // 创建配置文件目录
+  const configDir = path.join(confDir, "config");
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  // 生成运行时配置文件内容
+  const runtimeConfig =
+    `
+[server]
+host = "0.0.0.0"
+port = ${kernelPort}
+enableAccessInterceptor = true
+enableAccessInterceptorRes = true
+embedPath = "dist"
+
+[leveldb]
+path = "${path.join(confDir, "leveldb")}"
+
+[host]
+downloadUrlPrefix = "${localServer}:${kernelPort}"
+previewUrlPrefix = "https://turbo-sdk.shimorelease.com"
+
+[case]
+resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "electron", "resource")}"
+`
+
+  // 将配置写入文件
+  const configPath = path.join(configDir, "config.toml");
+  fs.writeFileSync(configPath, runtimeConfig);
+  writeLog("Config file written to: " + configPath);
+  writeLog("Config content: " + runtimeConfig);  // 添加日志以便调试
+
+  return configPath
+}
 
 const localServer = "http://127.0.0.1";
 
