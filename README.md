@@ -1,9 +1,9 @@
-# ChatOffice
+# AIChatOffice
 
 [中文](README.md) | [English](README_EN.md)
 
 ## 简介
-ChatOffice 是一个基于 Electron 和 React 构建的智能办公助手应用。
+AIChatOffice 是一个基于 Electron 和 React 构建的智能办公助手应用。
 
 ## 技术栈
 - Electron - 跨平台桌面应用框架

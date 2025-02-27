@@ -1,9 +1,9 @@
-# ChatOffice
+# AIChatOffice
 
 [中文](README.md) | [English](README_EN.md)
 
 ## Introduction
-ChatOffice is an intelligent office assistant application built with Electron and React.
+AIChatOffice is an intelligent office assistant application built with Electron and React.
 
 ## Tech Stack
 - Electron - Cross-platform desktop framework
