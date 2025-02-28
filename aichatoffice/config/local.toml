@@ -1,0 +1,32 @@
+[server]
+enableAccessInterceptor = true
+enableAccessInterceptorRes = true
+port = 9001
+
+[leveldb]
+path = "~/workspace/public/aichatoffice/aichatoffice/leveldb"
+
+[host]
+downloadUrlPrefix = "http://172.16.21.165:9301"
+previewUrlPrefix = "http://172.16.21.165:9001"
+
+[case]
+resourcePath = "./resource"
+
+
+[userChat]
+reset = ["/reset"]
+timeout = 300
+# conversationLimit = 5
+convertedTextDir = "converted"
+
+[openai]
+configMode = "remote"                                         # local 本地配置，remote 远程回调配置
+baseUrl = "https://api.siliconflow.cn/v1"
+textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
+name = ""
+proxyUrl = ""
+subservice = ""
+inputMaxToken = 1000
+outputMaxToken = 10000

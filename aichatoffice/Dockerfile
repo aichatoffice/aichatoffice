@@ -1,4 +1,4 @@
-ARG APP=turbo-demo
+ARG APP=aichatoffice
 ARG TURBO=turboone
 
 ## UI build stage

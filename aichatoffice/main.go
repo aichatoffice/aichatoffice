@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"turbo-demo/cmd"
-	_ "turbo-demo/cmd"
-	_ "turbo-demo/cmd/server"
+	"aichatoffice/cmd"
+	_ "aichatoffice/cmd"
+	_ "aichatoffice/cmd/server"
 )
 
 func main() {

@@ -12,8 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
-	"turbo-demo/pkg/models/dto"
-	"turbo-demo/pkg/models/leveldb"
+
+	"aichatoffice/pkg/models/dto"
+	"aichatoffice/pkg/models/leveldb"
 )
 
 type FileService struct {

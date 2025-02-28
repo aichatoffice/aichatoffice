@@ -9,9 +9,10 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
-	"turbo-demo/pkg/invoker"
-	"turbo-demo/pkg/models/dto"
-	"turbo-demo/pkg/utils"
+
+	"aichatoffice/pkg/invoker"
+	"aichatoffice/pkg/models/dto"
+	"aichatoffice/pkg/utils"
 )
 
 func GetFiles(c *gin.Context) {

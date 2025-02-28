@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gotomicro/ego/core/econf"
 
-	"turbo-demo/pkg/invoker"
+	"aichatoffice/pkg/invoker"
 )
 
 func Verify(c *gin.Context) {

@@ -1,7 +1,7 @@
 .idea/
-/bin/turbo-demo
+/bin/aichatoffice
 /logs/
-turbo-demo
+aichatoffice
 /pkg/consts/logs/
 /test-result/
 /leveldb/

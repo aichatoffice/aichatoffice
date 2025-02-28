@@ -6,16 +6,15 @@ import (
 	"github.com/spf13/cobra"
 	_ "go.uber.org/automaxprocs"
 
-	"turbo-demo/pkg/invoker"
-	httpServer "turbo-demo/pkg/server/http"
-
-	"turbo-demo/cmd"
+	"aichatoffice/cmd"
+	"aichatoffice/pkg/invoker"
+	httpServer "aichatoffice/pkg/server/http"
 )
 
 var CmdRun = &cobra.Command{
 	Use:   "server",
-	Short: "启动 turbo-demo http 服务端",
-	Long:  `启动 turbo-demo http 服务端`,
+	Short: "启动 aichatoffice http 服务端",
+	Long:  `启动 aichatoffice http 服务端`,
 	Run:   CmdFunc,
 }
 

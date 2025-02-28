@@ -19,5 +19,5 @@ func init() {
 }
 
 var RootCommand = &cobra.Command{
-	Use: "turbo-demo",
+	Use: "aichatoffice",
 }

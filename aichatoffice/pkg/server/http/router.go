@@ -3,11 +3,11 @@ package http
 import (
 	"github.com/gotomicro/ego/server/egin"
 
-	"turbo-demo/pkg/invoker"
-	"turbo-demo/pkg/server/http/api"
-	"turbo-demo/pkg/server/http/callback"
-	"turbo-demo/pkg/server/http/middlewares"
-	"turbo-demo/ui"
+	"aichatoffice/pkg/invoker"
+	"aichatoffice/pkg/server/http/api"
+	"aichatoffice/pkg/server/http/callback"
+	"aichatoffice/pkg/server/http/middlewares"
+	"aichatoffice/ui"
 )
 
 func ServeHTTP() *egin.Component {
@@ -39,6 +39,19 @@ func ServeHTTP() *egin.Component {
 		// ai 回调
 		callbackRouter.GET("/chat/aiConfig", callback.AIConfig)
 	}
+
+	// ai-chat路由
+	apiGroup := r.Group("/api")
+	chatRouters := apiGroup.Group("/chat")
+	{
+		chatRouters.Use(middlewares.ChatUser())
+		chatRouters.POST("", api.NewConversation)
+		chatRouters.GET("/:conversation_id", api.GetConversation)
+		chatRouters.DELETE("/:conversation_id", api.DeleteConversation)
+		chatRouters.POST("/:conversation_id/break", api.BreakConversation)
+		chatRouters.POST("/:conversation_id/chat", api.Chat) //todo summarize 是一种特殊的 chat
+	}
+
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))
 	r.Use(middlewares.Serve("/", middlewares.FallbackFileSystem(middlewares.EmbedFolder(ui.WebUI, "dist")), true))
 	return r
