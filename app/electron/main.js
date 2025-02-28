@@ -15,10 +15,15 @@ let mainWindow
 const appDir = path.dirname(app.getAppPath())
 const isDevEnv = process.env.NODE_ENV === "development"
 const appVer = app.getVersion()
-let kernelPort = 8000
+let kernelPort = 0
+let kernelSDKPort = 0
+let governorApiPort = 0
+let grpcPort = 0
+
 const confDir = path.join(app.getPath("home"), ".config", "aichatoffice")
 const windowStatePath = path.join(confDir, "windowState.json")
 let kernelProcess
+let kernelSDKProcess
 let bootWindow
 let openAsHidden = false
 let workspaces = []
@@ -39,8 +44,8 @@ try {
 }
 
 ipcMain.handle('api-request', async (event, options) => {
-  const { method = 'GET', path, body } = options
-  const url = `${localServer}:${kernelPort}${path}`
+  const { method = 'GET', path, body, type = "" } = options
+  const url = `${localServer}:${type == "SDK" ? kernelSDKPort : kernelPort}${path}`
   writeLog(`API request: ${method} ${path}`)
 
   try {
@@ -111,182 +116,154 @@ app.whenReady().then(() => {
 })
 
 async function runServer() {
-  return new Promise(async (resolve) => {
-    writeLog("confDir: " + confDir);
-    bootWindow = new BrowserWindow({
-      show: false,
-      width: Math.floor(screen.getPrimaryDisplay().size.width / 2),
-      height: Math.floor(screen.getPrimaryDisplay().workAreaSize.height / 2),
-      frame: false,
-      backgroundColor: "#1e1e1e",
-      resizable: false,
-      icon: path.join(appDir, "stage", "icon-large.png"),
-    });
-    writeLog("appDir: " + appDir);
-    let bootIndex;
-    if (isDevEnv) {
-      bootIndex = path.join(appDir, "electron", "boot.html");
-    } else {
-      bootIndex = path.join(process.resourcesPath, "electron", "boot.html");
+  try {
+    // 初始化启动窗口
+    bootWindow = await initBootWindow();
+
+    // 获取服务路径
+    const { serverPath, sdkServerPath } = getServerPaths();
+
+    // 检查服务程序是否存在
+    if (!isDevEnv && !checkServerExecutables(serverPath, sdkServerPath)) {
+      return false;
     }
 
-    await bootWindow.loadFile(bootIndex, { query: { v: appVer } });
-    if (openAsHidden) {
-      bootWindow.minimize();
-    } else {
-      bootWindow.show();
+    // 获取可用端口
+    if (!await initializePorts()) {
+      return false;
     }
 
-    let serverPath
-    if (isDevEnv) {
-      serverPath = path.join(appDir, "electron", "server", 'aichatoffice');
-    } else {
-      serverPath = path.join(process.resourcesPath, "electron", "server", 'aichatoffice');
-    }
-    if (!isDevEnv) {
-      writeLog("serverPath: " + serverPath);
-      if (!fs.existsSync(serverPath)) {
-        showErrorWindow("⚠️ 内核程序丢失 Kernel program is missing", `<div>内核程序丢失，请重新安装 AIChatOffice ，并将 AIChatOffice 内核程序加入杀毒软件信任列表。</div><div>The kernel program is not found, please reinstall AIChatOffice and add AIChatOffice Kernel prgram into the trust list of your antivirus software.</div><div><i>${serverPath}</i></div>`);
-        bootWindow.destroy();
-        resolve(false);
-        return;
-      }
-    }
-    // 非开发环境下，使用本地 server 自己起
-    let port = ""
-    if (!isDevEnv || workspaces.length > 0) {
-      if (port && "" !== port) {
-        kernelPort = port;
-      } else {
-        const getAvailablePort = () => {
-          // https://gist.github.com/mikeal/1840641
-          return new Promise((portResolve, portReject) => {
-            const server = gNet.createServer();
-            server.on("error", error => {
-              writeLog(error);
-              kernelPort = "";
-              portReject();
-            });
-            server.listen(0, () => {
-              kernelPort = server.address().port;
-              server.close(() => portResolve(kernelPort));
-            });
-          });
-        };
-        await getAvailablePort();
-        writeLog("got kernel port123 [" + kernelPort + "]");
+    // 生成配置文件
+    const configPath = generateRuntimeConfig();
+    const sdkConfigPath = generateSDKRuntimeConfig();
 
-      }
-    }
-    writeLog("got kernel port [" + kernelPort + "]");
-
-    if (!kernelPort) {
-      bootWindow.destroy();
-      resolve(false);
-      return;
-    }
-    // 生成运行时配置文件
-    const configPath = generateRuntimeConfig()
-
-    // 添加配置文件路径到启动参数
+    // 准备启动命令
     const cmds = ["--config=" + configPath, "server"];
+    const sdkCmds = ["--config=" + sdkConfigPath, "api", "--local-callback-addr=" + getServer()];
 
-    writeLog(`ui version [${appVer}], booting kernel [${serverPath} ${cmds.join(" ")}]`);
+    writeLog(`booting kernel [${serverPath} ${cmds.join(" ")}]`);
+    writeLog(`booting sdk [${sdkServerPath} ${sdkCmds.join(" ")}]`);
 
-    let count = 0;
-    writeLog("checking kernel version");
-
-    // 调试模式下，自己启动 go 服务
-    // 正式环境下，启动 go 服务
+    // 启动服务
     if (!isDevEnv || workspaces.length > 0) {
-      kernelProcess = cp.spawn(serverPath, cmds, {
-        detached: false,
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-
-      // 添加服务器就绪状态检查
-      let isServerReady = false;
-      kernelProcess.stdout.on('data', (data) => {
-        writeLog(`kernel stdout: ${data}`);
-        if (data.toString().includes('server')) {
-          isServerReady = true;
-        }
-      });
-
-      // 等待服务器就绪
-      await new Promise((resolve) => {
-        const checkReady = () => {
-          if (isServerReady) {
-            resolve();
-          } else {
-            setTimeout(checkReady, 100);
-          }
-        };
-        checkReady();
-      });
-
-      // 给服务器一些启动时间
-      await sleep(1000);
-
-      const currentKernelPort = kernelPort;
-      writeLog("booted kernel process [pid=" + kernelProcess.pid + ", port=" + kernelPort + "]");
-      kernelProcess.on("close", (code) => {
-        writeLog(`kernel [pid=${kernelProcess.pid}, port=${currentKernelPort}] exited with code [${code}]`);
-        if (0 !== code) {
-          let errorWindowId;
-          switch (code) {
-            case 20:
-              errorWindowId = showErrorWindow("⚠️ 数据库被锁定 The database is locked", "<div>数据库文件正在被其他进程占用，请检查是否同时存在多个内核进程（aichatoffice Kernel）服务相同的工作空间。</div><div>The database file is being occupied by other processes, please check whether there are multiple kernel processes (AIChatOffice Kernel) serving the same workspace at the same time.</div>");
-              break;
-            case 21:
-              errorWindowId = showErrorWindow("⚠️ 监听端口 " + currentKernelPort + " 失败 Failed to listen to port " + currentKernelPort, "<div>监听 " + currentKernelPort + " 端口失败，请确保程序拥有网络权限并不受防火墙和杀毒软件阻止。</div><div>Failed to listen to port " + currentKernelPort + ", please make sure the program has network permissions and is not blocked by firewalls and antivirus software.</div>");
-              break;
-            case 24: // 工作空间已被锁定，尝试切换到第一个打开的工作空间
-              if (workspaces && 0 < workspaces.length) {
-                showWindow(workspaces[0].browserWindow);
-              }
-              errorWindowId = showErrorWindow("⚠️ 工作空间已被锁定 The workspace is locked", "<div>该工作空间正在被使用，请尝试在任务管理器中结束 AIChatOffice-Kernel 进程或者重启操作系统后再启动思源。</div><div>The workspace is being used, please try to end the AIChatOffice-Kernel process in the task manager or restart the operating system and then start AIChatOffice.</div>");
-              break;
-            case 25:
-              errorWindowId = showErrorWindow("⚠️ 初始化工作空间失败 Failed to create workspace directory", "<div>初始化工作空间失败。</div><div>Failed to init workspace.</div>");
-              break;
-            case 26:
-              errorWindowId = showErrorWindow("🚒 已成功避免潜在的数据损坏<br>Successfully avoid potential data corruption", "<div>工作空间下的文件正在被第三方软件（比如同步网盘、杀毒软件等）打开占用，继续使用会导致数据损坏，思源内核已经安全退出。<br><br>请将工作空间移动到其他路径后再打开，停止同步盘同步工作空间，并将工作空间加入杀毒软件信任列表。如果以上步骤无法解决问题，请参考<a href=\"https://ld246.com/article/1684586140917\" target=\"_blank\">这里</a>或者<a href=\"https://ld246.com/article/1649901726096\" target=\"_blank\">发帖</a>寻求帮助。</div><hr><div>The files in the workspace are being opened and occupied by third-party software (such as synchronized network disk, antivirus software, etc.), continuing to use it will cause data corruption, and the AIChatOffice Kernel is already safe shutdown.<br><br>Move the workspace to another path and open it again, stop the network disk to sync the workspace, and add the workspace to the antivirus software trust list. If the above steps do not resolve the issue, please look for help or report bugs <a href=\"https://liuyun.io/article/1686530886208\" target=\"_blank\">here</a>.</div>");
-              break;
-            case 0:
-              break;
-            default:
-              errorWindowId = showErrorWindow("⚠️ 内核因未知原因退出 The kernel exited for unknown reasons", `<div>思源内核因未知原因退出 [code=${code}]，请尝试重启操作系统后再启动思源。如果该问题依然发生，请检查杀毒软件是否阻止思源内核启动。</div><div>AIChatOffice Kernel exited for unknown reasons [code=${code}], please try to reboot your operating system and then start AIChatOffice again. If occurs this problem still, please check your anti-virus software whether kill the AIChatOffice Kernel.</div>`);
-              break;
-          }
-          bootWindow.destroy();
-          resolve(false);
-        }
-      });
-    }
-
-    writeLog("before checking kernel version");
-    // 检测端口是否启动成功
-    for (; ;) {
-      try {
-        writeLog("getServer: " + getServer());
-        const apiResult = await net.fetch(getServer() + "/showcase/files");
-        writeLog(apiResult)
-        break;
-      } catch (e) {
-        writeLog("get kernel version failed: " + e.message);
-        if (14 < ++count) {
-          writeLog("get kernel ver failed");
-          showErrorWindow("⚠️ 获取内核服务端口失败 Failed to get kernel serve port", "<div>获取内核服务端口失败，请确保程序拥有网络权限并不受防火墙和杀毒软件阻止。</div><div>Failed to get kernel serve port, please make sure the program has network permissions and is not blocked by firewalls and antivirus software.</div>");
-          bootWindow.destroy();
-          resolve(false);
-          return;
-        }
-        sleep(200);
+      // 启动主服务
+      if (!await startKernelServer(serverPath, cmds)) {
+        return false;
+      }
+      await sleep(2000);
+      // 启动 SDK 服务
+      if (!await startSDKServer(sdkServerPath, sdkCmds)) {
+        return false;
       }
     }
-    resolve(true);
-  })
+
+    return true;
+  } catch (error) {
+    writeLog(`Server startup failed: ${error.message}`);
+    bootWindow?.destroy();
+    return false;
+  }
+}
+
+// 辅助函数
+async function initBootWindow() {
+  const bootWindow = new BrowserWindow({
+    show: false,
+    width: Math.floor(screen.getPrimaryDisplay().size.width / 2),
+    height: Math.floor(screen.getPrimaryDisplay().workAreaSize.height / 2),
+    frame: false,
+    backgroundColor: "#1e1e1e",
+    resizable: false,
+    icon: path.join(appDir, "stage", "icon-large.png"),
+  });
+
+  const bootIndex = isDevEnv
+    ? path.join(appDir, "electron", "boot.html")
+    : path.join(process.resourcesPath, "electron", "boot.html");
+
+  await bootWindow.loadFile(bootIndex, { query: { v: appVer } });
+
+  if (openAsHidden) {
+    bootWindow.minimize();
+  } else {
+    bootWindow.show();
+  }
+
+  return bootWindow;
+}
+
+function getServerPaths() {
+  const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(process.resourcesPath, "electron", "server");
+  return {
+    serverPath: path.join(basePath, 'aichatoffice'),
+    sdkServerPath: path.join(basePath, 'sdk', 'turboone')
+  };
+}
+
+function checkServerExecutables(serverPath, sdkServerPath) {
+  if (!fs.existsSync(serverPath)) {
+    showErrorWindow("⚠️ 内核程序丢失 Kernel program is missing",
+      `<div>内核程序丢失，请重新安装 AIChatOffice ，并将 AIChatOffice 内核程序加入杀毒软件信任列表。</div><div>The kernel program is not found, please reinstall AIChatOffice and add AIChatOffice Kernel prgram into the trust list of your antivirus software.</div><div><i>${serverPath}</i></div>`);
+    bootWindow.destroy();
+    return false;
+  }
+
+  if (!fs.existsSync(sdkServerPath)) {
+    showErrorWindow("⚠️ 极速版sdk程序丢失 TurboOne program is missing",
+      `<div>极速版sdk程序丢失，请重新安装 AIChatOffice ，并将 AIChatOffice 极速版sdk程序加入杀毒软件信任列表。</div><div>The TurboOne program is not found, please reinstall AIChatOffice and add AIChatOffice TurboOne program into the trust list of your antivirus software.</div><div><i>${sdkServerPath}</i></div>`);
+    bootWindow.destroy();
+    return false;
+  }
+
+  return true;
+}
+
+async function startSDKServer(sdkServerPath, sdkCmds) {
+  kernelSDKProcess = cp.spawn(sdkServerPath, sdkCmds, {
+    detached: false,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  const isSDKStarted = await waitForServerReady(kernelSDKProcess, 'SDK');
+  if (!isSDKStarted) return false;
+
+  await sleep(1000);
+
+  const currentKernelSDKPort = kernelSDKPort;
+  writeLog(`booted sdk process [pid=${kernelSDKProcess.pid}, port=${currentKernelSDKPort}]`);
+
+  kernelSDKProcess.on("close", handleSDKProcessClose);
+
+  // 检查 SDK 服务端口
+  if (!await checkServiceEndpoint(getSDKerver() + "/api/file/page", "SDK")) {
+    return false;
+  }
+
+  return true;
+}
+
+async function startKernelServer(serverPath, cmds) {
+  kernelProcess = cp.spawn(serverPath, cmds, {
+    detached: false,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  const isKernelStarted = await waitForServerReady(kernelProcess, 'kernel');
+  if (!isKernelStarted) return false;
+
+  await sleep(1000);
+
+  const currentKernelPort = kernelPort;
+  writeLog(`booted kernel process [pid=${kernelProcess.pid}, port=${kernelPort}]`);
+
+  kernelProcess.on("close", (code) => handleKernelProcessClose(code, currentKernelPort));
+
+  // 检查主服务端口 (AI 回调 不通过会导致SDK启动失败)
+  if (!await checkServiceEndpoint(getServer() + "/v1/callback/chat/aiConfig", "kernel")) {
+    return false;
+  }
+
+  return true;
 }
 
 const initMainWindow = () => {
@@ -504,12 +481,18 @@ const writeLog = (out) => {
   }
 };
 
-// 生成运行时配置文件
+// 生成运行时 客户客户端配置文件
 function generateRuntimeConfig() {
   // 创建配置文件目录
   const configDir = path.join(confDir, "config");
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  // 创建日志目录
+  const logsDir = path.join(confDir, "logs");
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
   }
 
   // 生成运行时配置文件内容
@@ -522,17 +505,134 @@ enableAccessInterceptor = true
 enableAccessInterceptorRes = true
 embedPath = "dist"
 
+[logger]
+dir = "${logsDir}"
+
 [leveldb]
 path = "${path.join(confDir, "leveldb")}"
 
 [host]
 downloadUrlPrefix = "${localServer}:${kernelPort}"
-previewUrlPrefix = "https://turbo-sdk.shimorelease.com"
+previewUrlPrefix = "${localServer}:${kernelSDKPort}"
 
 [case]
 resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "electron", "resource")}"
 `
 
+  // 将配置写入文件
+  const configPath = path.join(configDir, "config.toml");
+  fs.writeFileSync(configPath, runtimeConfig);
+  writeLog("Config file written to: " + configPath);
+  writeLog("Config content: " + runtimeConfig);  // 添加日志以便调试
+
+  return configPath
+}
+
+// 生成运行时 客户客户端配置文件
+function generateSDKRuntimeConfig() {
+  // 创建配置文件目录
+  const configDir = path.join(confDir, "SDKconfig");
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+  // 创建cdn文件目录
+  const cdnDir = path.join(confDir, "cdn");
+  if (!fs.existsSync(cdnDir)) {
+    fs.mkdirSync(cdnDir, { recursive: true });
+  }
+  // 生成运行时配置文件内容
+  const runtimeConfig =
+    `
+[app]
+rootURL = "http://localhost:${kernelSDKPort}"
+cdnDir = "${cdnDir}"
+
+[server.http.api]
+network = "tcp4"
+host = "0.0.0.0"
+port = ${kernelSDKPort}
+embedPath = "dist"
+
+[server.governor.api]
+host = "0.0.0.0"
+port = ${governorApiPort}
+
+[server.grpc]
+port = ${grpcPort}
+maxRecvMsgSize = 300
+maxSendMsgSize = 10
+
+[logger]
+dir = "${path.join(confDir, "logs")}"
+
+[logger.default]
+level = "debug"
+writer = "stderr"
+
+[logger.ego]
+level = "info"
+writer = "stderr"
+
+[preview]
+fileValidDays = 7
+totalFileSizeLimitBytes = 100
+fileDir = "${path.join(cdnDir, "files")}"
+fileReplaceExts = [".emf", ".wmf", ".chart", ".tif", ".tiff"]
+
+[preview.static.rule]
+lizard-service-preview = ["assets", "templates", "service.scripts", "service.styles"]
+lizard-service-docx-sdk = ["assets", "service.scripts", "service.styles"]
+lizard-service-presentation-sdk = ["assets", "service.scripts", "service.styles"]
+lizard-service-sheet-sdk = ["assets", "service.scripts", "service.styles"]
+
+[preview.convert]
+tmpDir = "${path.join(confDir, "tmp")}"
+
+[preview.watermark.copyright]
+enable = true
+
+[apiStore]
+storeType = "leveldb"
+
+[apiStore.leveldb]
+path = "${path.join(confDir, "apileveldb")}"
+
+[chatStore]
+storeType = "leveldb" 
+
+[chatStore.leveldb]
+path = "${path.join(confDir, "chatleveldb")}"
+
+[callback]
+configFileName = "${isDevEnv ? "./server/sdk/callback.yaml" : path.join(process.resourcesPath, "electron", "server", "sdk", "callback.yaml")}"
+timeoutSec = 5
+uploadTimeoutSec = 600
+retryAttempts = 3
+retryDelaySec = 1
+
+[stream]
+apiConfigFileName = "${isDevEnv ? "./server/sdk/api.yaml" : path.join(process.resourcesPath, "electron", "server", "sdk", "api.yaml")}"
+
+[license]
+fileSizeLimit = "1M"
+checkGRPCTimeout = "5s"
+
+[jwt]
+secretKey = "i4?h_c@UGbPK_RRgf+7buu]MYbgh9~=Z"
+
+[font]
+dir = "${path.join(cdnDir, "fonts")}"
+validMimeTypes = ["font/ttf", "font/woff"] 
+
+# 下面都是 ai 用的
+[userChat]
+reset = ["/reset"]
+timeout = 300
+
+
+[openai]
+configMode = "remote"  # local 本地配置，remote 远程回调配置
+`
   // 将配置写入文件
   const configPath = path.join(configDir, "config.toml");
   fs.writeFileSync(configPath, runtimeConfig);
@@ -548,6 +648,174 @@ const getServer = (port = kernelPort) => {
   return localServer + ":" + port;
 };
 
+const getSDKerver = (port = kernelSDKPort) => {
+  return localServer + ":" + port;
+};
+
 const sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
+
+async function initializePorts() {
+  // 非开发环境或有工作空间时才需要初始化端口
+  if (!(!isDevEnv || workspaces.length > 0)) {
+    return true;
+  }
+
+  try {
+    // 获取 SDK 服务端口
+    if (!kernelSDKPort) {
+      kernelSDKPort = await getAvailablePort("sdk");
+      writeLog(`got kernel sdk port [${kernelSDKPort}]`);
+    }
+    // 获取客户端服务端口
+    if (!kernelPort) {
+      kernelPort = await getAvailablePort("client");
+      writeLog(`got kernel port [${kernelPort}]`);
+    }
+    // 获取 governor api 端口
+    if (!governorApiPort) {
+      governorApiPort = await getAvailablePort("governorApi");
+      writeLog(`got governor api port [${governorApiPort}]`);
+    }
+    // 获取 grpc 端口 
+    if (!grpcPort) {
+      grpcPort = await getAvailablePort("grpc");
+      writeLog(`got grpc port [${grpcPort}]`);
+    }
+
+    if (!kernelPort || !kernelSDKPort) {
+      bootWindow.destroy();
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    writeLog(`Failed to initialize ports: ${error.message}`);
+    bootWindow.destroy();
+    return false;
+  }
+}
+
+// 获取可用端口的辅助函数
+function getAvailablePort(type) {
+  return new Promise((resolve, reject) => {
+    const server = gNet.createServer();
+
+    server.on("error", error => {
+      writeLog(error);
+      if (type === "client") {
+        kernelPort = "";
+      } else if (type === "sdk") {
+        kernelSDKPort = "";
+      } else if (type === "governorApi") {
+        governorApiPort = "";
+      } else if (type === "grpc") {
+        grpcPort = "";
+      }
+      reject(error);
+    });
+
+    server.listen(0, () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+// 等待服务器就绪
+async function waitForServerReady(process, serverType) {
+  return new Promise((resolve) => {
+    let isStarted = false;
+    const timeout = setTimeout(() => {
+      if (!isStarted) {
+        writeLog(`${serverType} 启动超时`);
+        process.kill();
+        resolve(false);
+      }
+    }, 8000);
+
+    process.stdout.on('data', (data) => {
+      const output = data.toString();
+      writeLog(`${serverType} stdout: ${output}`);
+      if ((serverType == 'kernel' && output.includes('server')) || (serverType == 'SDK' && output.includes(localServer))) {
+        isStarted = true;
+        clearTimeout(timeout);
+        resolve(true);
+      }
+    });
+
+    process.stderr.on('data', (data) => {
+      writeLog(`${serverType} stderr: ${data.toString()}`);
+    });
+
+    process.on('error', (err) => {
+      writeLog(`${serverType} process error: ${err.message}`);
+      clearTimeout(timeout);
+      resolve(false);
+    });
+  });
+}
+
+// 检查服务端点是否可用
+async function checkServiceEndpoint(endpoint, serverType) {
+  let count = 0;
+  const maxRetries = 15; // 最大重试次数
+  const retryDelay = 200; // 重试间隔(ms)
+
+  while (count < maxRetries) {
+    try {
+      writeLog(`Checking ${serverType} endpoint: ${endpoint}`);
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        writeLog(`${serverType} service check failed: ${response.status} ${response.statusText}`);
+        count++;
+        await sleep(retryDelay);
+        continue;
+      }
+
+      writeLog(`${serverType} service check successful`);
+      return true;
+
+    } catch (error) {
+      writeLog(`${serverType} service check error: ${error.message}`);
+      count++;
+
+      if (count >= maxRetries) {
+        showErrorWindow(
+          `⚠️ ${serverType}服务检查失败 ${serverType} service check failed`,
+          `<div>获取${serverType}服务端口失败，请确保程序拥有网络权限并不受防火墙和杀毒软件阻止。</div>
+           <div>Failed to get ${serverType} service port, please make sure the program has network permissions and is not blocked by firewalls and antivirus software.</div>`
+        );
+        return false;
+      }
+
+      await sleep(retryDelay);
+    }
+  }
+
+  return false;
+}
+
+// 处理 SDK 进程关闭
+function handleSDKProcessClose(code) {
+  writeLog(`SDK process exited with code ${code}`);
+  if (code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("AIChatOffice-show-msg", {
+      msg: `SDK服务异常退出，请重启应用\nSDK service exited abnormally, please restart the application`,
+      timeout: 0
+    });
+  }
+}
+
+// 处理内核进程关闭
+function handleKernelProcessClose(code, port) {
+  writeLog(`Kernel process exited with code ${code} on port ${port}`);
+  if (code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("AIChatOffice-show-msg", {
+      msg: `内核服务异常退出，请重启应用\nKernel service exited abnormally, please restart the application`,
+      timeout: 0
+    });
+  }
+}

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
 import { useIntl } from "react-intl"
+import { useFiles } from "@/providers/FileContext"
 interface Message {
   id: number
   role: "assistant" | "user"
@@ -14,6 +15,8 @@ export default function DocumentChat() {
   const { formatMessage: f } = useIntl()
   const { id: documentId = '' } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(true)
+  const [previewUrl, setPreviewUrl] = useState("")
+  const { getPreviewUrl } = useFiles()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: Date.now(),
@@ -34,6 +37,12 @@ export default function DocumentChat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    getPreviewUrl(documentId || "case_word.docx").then((url) => {
+      setPreviewUrl(url || "")
+    })
+  }, [documentId, getPreviewUrl])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -77,7 +86,14 @@ export default function DocumentChat() {
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <iframe src={`https://turbo-sdk.shimorelease.com/api/file/page?file_id=${documentId || "case_word.docx"}&token=null`} className="w-full h-full" />
+          {/* {previewUrl} */}
+          {previewUrl ? (
+            <iframe src={previewUrl} className="w-full h-full" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-500">
+              加载中...
+            </div>
+          )}
         </div>
 
         {/* Right Chat Panel*/}

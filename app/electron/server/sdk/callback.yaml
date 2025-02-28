@@ -1,0 +1,308 @@
+gateway:
+  title: 回调网关
+  endpoint: https://turbo-demo.shimorelease.com
+module:
+  auth:
+    index: 1
+    title: 文件鉴权
+  preview:
+    index: 2
+    title: 文件预览
+  edit:
+    index: 3
+    title: 文件编辑
+  chat:
+    index: 4
+    title: AI聊天
+
+apis:
+  - in: auth
+    name: verify_token
+    cn_name: 鉴权
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://a.b/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: GET
+      path: /v1/callback/verify/${file_id}
+      content_type: ""
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+  - in: preview
+    name: get_file
+    cn_name: 获取文件元信息
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://a.b/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: GET
+      path: /v1/callback/files/${file_id}
+      content_type: ""
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+  - in: preview
+    name: get_file_download
+    cn_name: 获取文件下载地址
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: GET
+      path: /v1/callback/files/${file_id}/download
+      content_type: ""
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+  - in: preview
+    name: get_file_watermark
+    cn_name: 获取水印信息
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: GET
+      path: /v1/callback/files/${file_id}/watermark
+      content_type: ""
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+  - in: edit
+    name: get_file_upload_addr
+    cn_name: 获取文件上传地址
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: POST
+      path: /v1/callback/files/${file_id}/upload/address
+      content_type: application/json
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+        - in: body
+          label: size
+          name: size
+          description: 文档大小，单位 byte
+          required: true
+          schema:
+            type: string
+        - in: body
+          label: content_type
+          name: content_type
+          description: 文档的 MIME 类型
+          required: true
+          schema:
+            type: string
+        - in: body
+          label: attachment_size
+          name: attachment_size
+          description: 文档内包含的附件的大小，单位 byte
+          required: false
+          schema:
+            type: string
+  - in: edit
+    name: file_upload_complete
+    cn_name: 上传完成后回调通知上传结果
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: POST
+      path: /v1/callback/files/${file_id}/upload/complete
+      content_type: application/json
+      parameters:
+        - in: path
+          label: file_id
+          name: file_id
+          description: 文档唯一标识
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string
+        - in: header
+          label: user_query
+          name: X-User-Query
+          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          required: false
+          schema:
+            type: string
+        - in: body
+          label: request
+          name: request
+          description: 获取上传地址时相同的请求
+          required: true
+          schema:
+            type: object
+            properties:
+              content_type:
+                type: string
+                description: 文档的 MIME 类型
+              digest:
+                type: string
+                description: '文档校验和，`key`为算法，`value`为结果值，如：{"key": "value"}'
+              is_manual:
+                type: boolean
+                description: 是否手动保存
+              name:
+                type: string
+                description: 文档名称
+              size:
+                type: string
+                description: 文件大小，单位 byte
+            required:
+              - name
+              - size
+        - in: body
+          label: response
+          name: response
+          description: 上传文档完成后，存储服务返回的 HTTP Response
+          required: true
+          schema:
+            type: object
+            properties:
+              body:
+                type: string
+                description: 上传文档时，存储服务返回的 HTTP Response Body 的 base64 编码
+              headers:
+                type: string
+                description: 上传文档时，存储服务返回的 HTTP Response Header
+              status_code:
+                type: string
+                description: 上传文档时，存储服务返回的 HTTP Response Status
+            required:
+              - status_code
+        - in: body
+          label: send_back_params
+          name: send_back_params
+          description: 获取上传地址时，要求原样带回的额外参数
+          required: false
+          schema:
+            type: string
+  - in: chat
+    name: get_ai_config
+    cn_name: 获取 AI 配置
+    enable: true
+    editable: true
+    required: true
+    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    request:
+      method: GET
+      path: /v1/callback/chat/aiConfig
+      content_type: ""
+      parameters:
+        - in: header
+          label: token
+          name: X-WebOffice-Token
+          description: 当前请求的用户凭证
+          required: true
+          schema:
+            type: string

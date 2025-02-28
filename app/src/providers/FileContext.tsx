@@ -124,13 +124,15 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getPreviewUrl = async (id: string) => {
+  const getPreviewUrl = async (id: string): Promise<string> => {
     try {
-      return await apiRequest({
+      const data = await apiRequest({
         path: `/showcase/${id}/preview/url`
       })
+      return data?.url
     } catch (error) {
       console.error('Error getting preview url:', error)
+      return ""
     }
   }
 
