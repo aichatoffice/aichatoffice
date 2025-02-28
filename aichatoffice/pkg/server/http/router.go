@@ -27,7 +27,7 @@ func ServeHTTP() *egin.Component {
 	callbackRouter := r.Group("/v1/callback")
 	{
 		// 鉴权
-		callbackRouter.POST("/verify/:fileId", callback.Verify)
+		callbackRouter.GET("/verify/:fileId", callback.Verify)
 		// 预览回调
 		callbackRouter.GET("/files/:fileId", callback.GetFile)
 		callbackRouter.GET("/files/:fileId/download", callback.GetFileDownload)
@@ -37,7 +37,7 @@ func ServeHTTP() *egin.Component {
 		callbackRouter.POST("/files/:fileId/upload/complete", callback.UploadComplete)
 		callbackRouter.PUT("/files/:fileId/upload", callback.UploadFile)
 		// ai 回调
-		callbackRouter.POST("/chat/aiConfig", callback.AIConfig)
+		callbackRouter.GET("/chat/aiConfig", callback.AIConfig)
 	}
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))
 	r.Use(middlewares.Serve("/", middlewares.FallbackFileSystem(middlewares.EmbedFolder(ui.WebUI, "dist")), true))
