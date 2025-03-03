@@ -1,8 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+// 定义允许的通道
+const validChannels = ['api-request', 'break-file-chat', 'cancel-request', 'read-stream']
+
+// 只暴露一个统一的 API 接口
 contextBridge.exposeInMainWorld('electron', {
   invoke: (channel, ...args) => {
-    const validChannels = ['api-request'] // 定义允许的通道
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args)
     }

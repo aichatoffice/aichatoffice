@@ -33,6 +33,10 @@ export default function App() {
           element: <HomePage />
         },
         {
+          path: '/chat',
+          element: <ChatPage />
+        },
+        {
           path: '/chat/:id',
           element: <ChatPage />
         }

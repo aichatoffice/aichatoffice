@@ -15,7 +15,7 @@ let mainWindow
 const appDir = path.dirname(app.getAppPath())
 const isDevEnv = process.env.NODE_ENV === "development"
 const appVer = app.getVersion()
-let kernelPort = 0
+let kernelPort = 0 // 本地调试时需要修改为本地后服务端口
 let kernelSDKPort = 0
 let governorApiPort = 0
 let grpcPort = 0
@@ -28,6 +28,9 @@ let bootWindow
 let openAsHidden = false
 let workspaces = []
 remote.initialize()
+
+// 添加新的变量来追踪 dock 点击事件
+let isQuitting = false;
 
 const isOpenAsHidden = function () {
   return 1 === workspaces.length && openAsHidden;
@@ -43,67 +46,257 @@ try {
   app.exit();
 }
 
+// 存储 AbortController 的映射
+const abortControllers = new Map();
+
+// 添加一个 Map 来跟踪每个会话的活动请求
+const activeConversationRequests = new Map();
+
+// 生成唯一的请求ID
+function generateRequestId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// 处理请求
 ipcMain.handle('api-request', async (event, options) => {
-  const { method = 'GET', path, body, type = "" } = options
-  const url = `${localServer}:${type == "SDK" ? kernelSDKPort : kernelPort}${path}`
-  writeLog(`API request: ${method} ${path}`)
+  const { method = 'GET', path, body, headers = {} } = options;
+  const url = `${localServer}:${kernelPort}${path}`;
+  const requestId = generateRequestId();
+
+  // 检查是否是聊天请求
+  const chatMatch = path.match(/\/api\/chat\/(.*?)\/chat/);
+  const conversationId = chatMatch ? chatMatch[1] : null;
+
+  const requestInfo = {
+    controller: new AbortController(),
+    response: null,
+  };
+  abortControllers.set(requestId, requestInfo);
+
+  // 如果是聊天请求，记录到会话Map中
+  if (conversationId) {
+    activeConversationRequests.set(conversationId, requestInfo);
+  }
+
+  writeLog(`API request: ${method} ${path} (ID: ${requestId})`);
+
+  const isStream = headers['Content-Type']?.includes("text/event-stream");
 
   try {
     let requestBody;
-    const headers = {};
 
     if (body && body._isFormData) {
-      // 重建 FormData
-      writeLog('Reconstructing FormData')
+      writeLog('Reconstructing FormData');
       const formData = new FormData();
-      for (const [key, value] of body.entries) {
-        if (value && value._isFile) {
-          // 从 base64 重建文件
-          const base64Data = value.content.split(',')[1];
-          const buffer = Buffer.from(base64Data, 'base64');
-          const blob = new Blob([buffer], { type: value.type });
-          const file = new File([blob], value.name, {
-            type: value.type,
-            lastModified: value.lastModified
-          });
-          formData.append(key, file);
-        } else {
-          formData.append(key, value);
+
+      // 检查并处理entries数组
+      if (Array.isArray(body.entries)) {
+        for (const [key, value] of body.entries) {
+          if (value && value._isFile) {
+            // 从base64重建文件
+            try {
+              const base64Data = value.content.split(',')[1];
+              const buffer = Buffer.from(base64Data, 'base64');
+              const blob = new Blob([buffer], { type: value.type });
+              const file = new File([blob], value.name, {
+                type: value.type,
+                lastModified: value.lastModified
+              });
+              formData.append(key, file);
+              writeLog(`Added file to FormData: ${key}, ${value.name}, ${value.type}`);
+            } catch (error) {
+              writeLog(`Error creating file from base64: ${error.message}`);
+              throw new Error(`Failed to process file: ${error.message}`);
+            }
+          } else {
+            formData.append(key, value);
+            writeLog(`Added field to FormData: ${key}`);
+          }
         }
       }
       requestBody = formData;
-      writeLog('Request body is FormData');
+      writeLog('FormData reconstruction completed');
     } else if (body) {
-      headers['Content-Type'] = 'application/json';
+      if (headers['Content-Type'] == "") {
+        headers['Content-Type'] = 'application/json';
+      }
       requestBody = JSON.stringify(body);
       writeLog(`Request body: ${requestBody}`);
     }
+    console.log('formbody')
+    if (isStream) {
+      const response = await fetch(url, {
+        method,
+        body: requestBody,
+        headers,
+        signal: requestInfo.controller.signal
+      });
 
-    const response = await fetch(url, {
-      method,
-      body: requestBody,
-      headers
-    })
+      if (!response.ok) {
+        const errorText = await response.text();
+        writeLog(`API request failed: ${response.status} ${response.statusText}, Error: ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      writeLog(`API request failed: ${response.status} ${response.statusText}, Error: ${errorText}`)
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      requestInfo.response = response; // 保存响应对象以供后续读取
+
+      return {
+        requestId,
+        response: {
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          isStream: true
+        }
+      };
+    } else {
+      const response = await fetch(url, {
+        method,
+        body: requestBody,
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        writeLog(`API request failed: ${response.status} ${response.statusText}, Error: ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      // 如果是流式响应，直接读取并返回数据
+      if (isStream) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        // 返回一个可序列化的对象，包含状态码和头信息
+        return {
+          requestId,
+          response: {
+            status: response.status,
+            headers: Object.fromEntries(response.headers.entries()),
+            // 不直接返回 body，而是返回一个标识
+            isStream: true
+          }
+        };
+      } else {
+        if (response.status == 204) {
+          return response
+        } else {
+          const data = await response.json();
+          writeLog(`API response: ${JSON.stringify(data)}`);
+          return data;
+        }
+      }
+    }
+  } catch (error) {
+    writeLog(`API request failed: ${error.message}, URL: ${url}`);
+    throw error;
+  } finally {
+    if (!isStream) {
+      abortControllers.delete(requestId);
+      if (conversationId) {
+        activeConversationRequests.delete(conversationId);
+      }
+    }
+  }
+});
+
+// 处理请求取消
+ipcMain.handle('cancel-request', (event, requestId) => {
+  const controller = abortControllers.get(requestId);
+  if (controller) {
+    writeLog(`Cancelling request: ${requestId}`);
+    controller.abort();
+    abortControllers.delete(requestId);
+    return true;
+  }
+  return false;
+});
+
+// 处理中断聊天请求
+ipcMain.handle('break-file-chat', async (event, conversationId) => {
+  const url = `${localServer}:${kernelPort}/api/chat/${conversationId}/break`;
+  writeLog(`Breaking chat for conversation: ${conversationId}`);
+
+  try {
+    // 首先中断该会话的活动请求
+    const activeRequest = activeConversationRequests.get(conversationId);
+    if (activeRequest?.controller) {
+      writeLog(`Aborting active request for conversation: ${conversationId}`);
+      activeRequest.controller.abort();
+      activeConversationRequests.delete(conversationId);
     }
 
-    const data = await response.json()
-    writeLog(`API response: ${JSON.stringify(data)}`)
-    return data
+    // 然后发送 break 请求
+    const response = await fetch(url, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      writeLog(`Break chat failed: ${response.status} ${response.statusText}, Error: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    }
+
+    writeLog(`Chat break successful for conversation: ${conversationId}`);
+    return true;
   } catch (error) {
-    writeLog(`API request failed: ${error.message}, URL: ${url}`)
-    throw error
+    writeLog(`Break chat failed: ${error.message}`);
+    throw error;
   }
-})
+});
+
+// 添加新的 IPC 处理器来处理流数据
+const streamReaders = new Map();
+
+ipcMain.handle('read-stream', async (event, requestId) => {
+  const requestInfo = abortControllers.get(requestId);
+  if (!requestInfo?.response?.body) {
+    throw new Error('Stream not found');
+  }
+
+  let reader = streamReaders.get(requestId);
+  if (!reader) {
+    reader = requestInfo.response.body.getReader();
+    streamReaders.set(requestId, reader);
+  }
+
+  const decoder = new TextDecoder();
+
+  try {
+    const { value, done } = await reader.read();
+    if (done) {
+      reader.releaseLock();
+      streamReaders.delete(requestId);
+      abortControllers.delete(requestId);
+      const requestInfo = abortControllers.get(requestId);
+      if (requestInfo?.conversationId) {
+        activeConversationRequests.delete(requestInfo.conversationId);
+      }
+      return { done };
+    }
+    return {
+      value: decoder.decode(value),
+      done
+    };
+  } catch (error) {
+    reader.releaseLock();
+    streamReaders.delete(requestId);
+    abortControllers.delete(requestId);
+    throw error;
+  }
+});
 
 app.whenReady().then(() => {
   writeLog("start server: " + appDir);
   writeLog("start server dirname: " + __dirname);
-  // initMainWindow()
+
+  // 添加 dock 点击事件处理
+  app.on('activate', () => {
+    if (mainWindow === null) {
+      initMainWindow()
+    } else {
+      mainWindow.show()
+    }
+  })
+
   runServer().then((result) => {
     writeLog("runServer result: " + result);
     if (result) {
@@ -406,8 +599,8 @@ const initMainWindow = () => {
   }
 
   mainWindow.on("close", (event) => {
-    // 在 macOS 上,点击红色关闭按钮时只隐藏窗口
-    if (process.platform === 'darwin' && !app.isQuitting) {
+    // 在 macOS 上，点击红色关闭按钮时只隐藏窗口
+    if (process.platform === 'darwin' && !isQuitting) {
       event.preventDefault();
       mainWindow.hide();
       return;
@@ -416,7 +609,6 @@ const initMainWindow = () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("AIChatOffice-save-close", false);
     }
-    // event.preventDefault();
   });
 
   // 添加以下代码来帮助调试
@@ -517,6 +709,22 @@ previewUrlPrefix = "${localServer}:${kernelSDKPort}"
 
 [case]
 resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "electron", "resource")}"
+
+[userChat]
+reset = ["/reset"]
+timeout = 300
+convertedTextDir = "${path.join(confDir, "converted")}"
+
+[openai]
+configMode = "local"
+baseUrl = "https://api.siliconflow.cn/v1"
+textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
+name = ""
+proxyUrl = ""
+subservice = ""
+inputMaxToken = 1000
+outputMaxToken = 10000
 `
 
   // 将配置写入文件
@@ -817,5 +1025,35 @@ function handleKernelProcessClose(code, port) {
       msg: `内核服务异常退出，请重启应用\nKernel service exited abnormally, please restart the application`,
       timeout: 0
     });
+  }
+}
+
+// 添加 before-quit 事件处理
+app.on('before-quit', () => {
+  isQuitting = true;
+  cleanupStreams(); // 添加清理流的调用
+
+  // 确保关闭所有进程
+  if (kernelProcess) {
+    kernelProcess.kill();
+  }
+  if (kernelSDKProcess) {
+    kernelSDKProcess.kill();
+  }
+});
+
+// 清理函数（建议在适当的地方调用，比如窗口关闭时）
+function cleanupStreams() {
+  for (const [requestId, reader] of streamReaders.entries()) {
+    reader.releaseLock();
+    streamReaders.delete(requestId);
+    abortControllers.delete(requestId);
+  }
+
+  for (const [conversationId, requestInfo] of activeConversationRequests.entries()) {
+    if (requestInfo.controller) {
+      requestInfo.controller.abort();
+    }
+    activeConversationRequests.delete(conversationId);
   }
 }

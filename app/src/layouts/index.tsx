@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useState, useRef } from "react"
 import { useFiles } from "@/providers/FileContext"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { useLocation, Outlet } from "react-router-dom"
 import { Link } from "react-router-dom"
 import { formatDate } from "@/lib/utils"
@@ -63,7 +63,9 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           className="text-white hover:bg-white/10 lg:flex hidden"
         >
-          {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <div>
+            {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </div>
         </Button>
       </div>
 
@@ -110,11 +112,11 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <p className={`text-sm truncate max-w-[220px] ${isActive ? "text-white font-medium" : "text-gray-300"}`}>
-                              {file.name}
+                              {file.name || f({ id: "noTitle" })}
                             </p>
                           </TooltipTrigger>
                           <TooltipContent className="bg-gray-900 text-white border-gray-900">
-                            <p>{file.name}</p>
+                            {file.name || f({ id: "noTitle" })}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -187,7 +189,11 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
               <Menu className="h-6 w-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[80%] sm:w-[385px] bg-[#41464B] text-white p-0" asChild>
+          <SheetContent side="left" className="w-[80%] sm:w-[385px] bg-[#41464B] text-white p-0 border-none">
+            <SheetTitle className="sr-only">导航菜单</SheetTitle>
+            <SheetDescription className="sr-only">
+              文件列表和系统设置
+            </SheetDescription>
             <Sidebar />
           </SheetContent>
         </Sheet>

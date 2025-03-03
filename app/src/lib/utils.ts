@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
   非本年：展示「年+月+日」
 */
 export function formatDate(timestamp: number) {
-  if (!timestamp) { return "/" }
+  if (!timestamp) { return "" }
   const now = new Date(); // 当前时间
   const targetDate = new Date(timestamp * 1000); // 转换目标时间戳为日期对象
 

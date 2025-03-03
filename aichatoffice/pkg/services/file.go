@@ -74,7 +74,8 @@ func (f *FileService) GetFilesList(c *gin.Context) (files []dto.File, err error)
 	defer iter.Release()
 	for iter.Next() {
 		key := string(iter.Key())
-		if key == "" || strings.HasPrefix(key, "convert_") || strings.HasPrefix(key, "case_") {
+		fmt.Println(key, "key")
+		if key == "" || strings.HasPrefix(key, "custom_tool") || strings.HasPrefix(key, "ai") || strings.HasPrefix(key, "convert_") || strings.HasPrefix(key, "case_") {
 			continue
 		}
 		metaData, err := f.db.GetFile(key)
