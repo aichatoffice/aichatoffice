@@ -138,8 +138,9 @@ export default function DocumentChat() {
               textToAdd = parsedChunk.content[0].text?.replace(/^[\n]+/, "") || "";
             }
           } catch (e) { }
+
+          // 确保消息内容被完整添加
           accumulatedResponse += textToAdd
-          setIsLoading(false)
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMessageId ? { ...msg, content: accumulatedResponse } : msg
@@ -149,13 +150,15 @@ export default function DocumentChat() {
         controller.signal
       );
 
-      // **流式传输完成后，格式化 Markdown**
-      const formattedResponse = formatMarkdownText(accumulatedResponse);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId ? { ...msg, content: formattedResponse } : msg
-        )
-      );
+      // 确保在流结束后再次更新最终的消息
+      if (accumulatedResponse) {
+        const formattedResponse = formatMarkdownText(accumulatedResponse);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, content: formattedResponse } : msg
+          )
+        );
+      }
     } catch (error: unknown) {
       setMessages((prev) =>
         prev.map((m) =>

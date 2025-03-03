@@ -43,8 +43,9 @@ const apiRequest = async (options: {
   body?: any;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  isStream?: boolean;
 }) => {
-  const isStream = options.headers?.["Content-Type"]?.includes("text/event-stream")
+  const isStream = options.isStream
   if (!isElectron()) {
     // 非 Electron 环境使用普通 fetch
     const response = await fetch(options.path, {
@@ -103,7 +104,8 @@ const apiRequest = async (options: {
       method: options.method || 'GET',
       path: options.path,
       body: processedBody,
-      headers: options.headers
+      headers: options.headers,
+      isStream: isStream
     });
     // 处理流式响应
     if (result?.requestId && isStream) {
@@ -216,23 +218,36 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         path: `/api/chat/${conversation_id}/chat`,
         body: JSON.stringify(message),
         headers: {
-          'Content-Type': 'text/event-stream',
+          'Content-Type': 'application/json',
         },
         signal,
+        isStream: true
       });
 
       if (!response.body) throw new Error("No response body");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = ''; // 添加缓冲区
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // 处理缓冲区中剩余的数据
+          if (buffer.trim()) {
+            processChunk(buffer);
+          }
+          break;
+        }
+
         const chunk = decoder.decode(value, { stream: true });
-        // 将接收到的chunk按换行符分割，逐行处理
-        const lines = chunk.split('\n');
+        buffer += chunk;
+
+        // 按换行符分割并处理完整的行
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留最后一个不完整的行到缓冲区
+
         for (const line of lines) {
-          if (line.trim()) {  // 忽略空行
+          if (line.trim()) {
             processChunk(line);
           }
         }
@@ -244,9 +259,10 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
           path: `/api/chat/${conversation_id}/chat`,
           body: message,
           headers: {
-            'Content-Type': 'text/event-stream',
+            'Content-Type': 'application/json',
           },
           signal,
+          isStream: true
         });
 
         if (response?.requestId) {

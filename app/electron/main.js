@@ -59,7 +59,7 @@ function generateRequestId() {
 
 // 处理请求
 ipcMain.handle('api-request', async (event, options) => {
-  const { method = 'GET', path, body, headers = {} } = options;
+  const { method = 'GET', path, body, headers = {}, isStream = false } = options;
   const url = `${localServer}:${kernelPort}${path}`;
   const requestId = generateRequestId();
 
@@ -79,8 +79,6 @@ ipcMain.handle('api-request', async (event, options) => {
   }
 
   writeLog(`API request: ${method} ${path} (ID: ${requestId})`);
-
-  const isStream = headers['Content-Type']?.includes("text/event-stream");
 
   try {
     let requestBody;
