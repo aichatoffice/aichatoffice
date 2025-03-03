@@ -6,6 +6,8 @@ import { isElectron, getIpcRenderer } from '../utils/electron'
 interface FileItem {
   id: number
   name: string
+  type: string
+  content: string
   create_time: number
 }
 
@@ -33,6 +35,7 @@ interface FileContextType {
   ) => Promise<void>
   createFileChat: () => Promise<string>
   breakFileChat: (conversation_id: string) => Promise<void>
+  getFileById: (id: string) => Promise<FileItem>
 }
 
 const FileContext = createContext<FileContextType | null>(null)
@@ -135,6 +138,17 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const getFileById = async (id: string) => {
+    try {
+      const data = await apiRequest({
+        path: `/showcase/files/${id}`
+      })
+      return data
+    } catch (error) {
+      console.error('Error fetching files:', error)
+    }
+  }
+
   const uploadFile = async (file: File) => {
     try {
       const formData = new FormData()
@@ -227,27 +241,15 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       if (!response.body) throw new Error("No response body");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = ''; // 添加缓冲区
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) {
-          // 处理缓冲区中剩余的数据
-          if (buffer.trim()) {
-            processChunk(buffer);
-          }
-          break;
-        }
-
+        if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-
-        // 按换行符分割并处理完整的行
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // 保留最后一个不完整的行到缓冲区
-
+        // 将接收到的chunk按换行符分割，逐行处理
+        const lines = chunk.split('\n');
         for (const line of lines) {
-          if (line.trim()) {
+          if (line.trim()) {  // 忽略空行
             processChunk(line);
           }
         }
@@ -344,6 +346,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         sendFileChatMessage,
         createFileChat,
         breakFileChat,
+        getFileById
       }}
     >
       {children}

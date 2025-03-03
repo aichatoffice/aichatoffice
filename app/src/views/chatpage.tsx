@@ -6,7 +6,13 @@ import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
 import { useIntl } from "react-intl"
 import { useFiles } from "@/providers/FileContext"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"// ... existing code ...
+import * as pdfjsLib from 'pdfjs-dist'
+import { PDFDocumentProxy } from 'pdfjs-dist'
+
+const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
 
 interface Message {
   id: number
@@ -19,7 +25,7 @@ export default function DocumentChat() {
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(true)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, createFileChat, sendFileChatMessage, breakFileChat } = useFiles()
+  const { getPreviewUrl, createFileChat, sendFileChatMessage, breakFileChat, getFileById } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const defaultMessages = [
@@ -47,6 +53,9 @@ export default function DocumentChat() {
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const { toast } = useToast()
 
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [pdfData, setPdfData] = useState<Uint8Array | null>(null)
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -56,19 +65,33 @@ export default function DocumentChat() {
     let isSubscribed = true;
     async function initChat() {
       setMessages(defaultMessages)
+      setPreviewUrl("")
+      setPdfData(null)
       if (!documentId) return;
-      try {
-        const url = await getPreviewUrl(documentId || "case_word.docx");
-        if (!isSubscribed) return;
-        setPreviewUrl(url || "");
-
-        if (url) {
+      const file = await getFileById(documentId);
+      if (!isSubscribed) return;
+      if (file.type.includes("pdf")) {
+        if (file.content) {
+          setPdfData(base64ToUint8Array(file.content))
+          await renderPDF(base64ToUint8Array(file.content))
           const id = await createFileChat();
           if (!isSubscribed) return;
           setConversationId(id);
         }
-      } catch (error) {
-        console.error('初始化聊天失败:', error);
+      } else {
+        try {
+          const url = await getPreviewUrl(documentId);
+          if (!isSubscribed) return;
+          setPreviewUrl(url || "");
+
+          if (url) {
+            const id = await createFileChat();
+            if (!isSubscribed) return;
+            setConversationId(id);
+          }
+        } catch (error) {
+          console.error('初始化聊天失败:', error);
+        }
       }
     }
     initChat();
@@ -78,6 +101,52 @@ export default function DocumentChat() {
     };
   }, [documentId]);
 
+  // 渲染 PDF
+  const renderPDF = async (pdfData: Uint8Array) => {
+    try {
+      // 直接使用 Uint8Array 数据加载 PDF
+      const loadingTask = pdfjsLib.getDocument({ data: pdfData })
+      const pdf = await loadingTask.promise
+      await renderPage(1, pdf)
+    } catch (error) {
+      console.error('PDF 加载失败:', error)
+    }
+  }
+
+  const renderPage = async (pageNum: number, doc: PDFDocumentProxy) => {
+    if (!canvasRef.current) return
+
+    const page = await doc.getPage(pageNum)
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+
+    const viewport = page.getViewport({ scale: 1.5 })
+    canvas.height = viewport.height
+    canvas.width = viewport.width
+
+    const renderContext = {
+      canvasContext: context!,
+      viewport: viewport
+    }
+
+    await page.render(renderContext).promise
+  }
+
+  // 将 base64 字符串转换为 Uint8Array
+  const base64ToUint8Array = (base64: string) => {
+    // 移除 base64 字符串中的 data URI 头部（如果有）
+    const base64Clean = base64.replace(/^data:.*,/, '')
+    // 解码 base64 为二进制字符串
+    const binaryString = window.atob(base64Clean)
+    // 创建 Uint8Array
+    const bytes = new Uint8Array(binaryString.length)
+    // 将每个字符的 ASCII 码存入 Uint8Array
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return bytes
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -86,6 +155,7 @@ export default function DocumentChat() {
     if (!m.trim()) return
     setMessage("")
     setIsLoading(true)
+    let processingPromise = Promise.resolve(); // 用于确保顺序处理
     const controller = new AbortController()
     setAbortController(controller)
 
@@ -117,7 +187,8 @@ export default function DocumentChat() {
           stream: true,
           content: [{ type: "text", text: m }],
         },
-        (chunk) => {
+        async (chunk) => {
+          setIsLoading(false)
           if (controller.signal.aborted) return
 
           let textToAdd = chunk
@@ -132,33 +203,41 @@ export default function DocumentChat() {
                 )
               )
               setIsSending(false)
-              setIsLoading(false)
               return
             } else if (parsedChunk.content) {
               textToAdd = parsedChunk.content[0].text?.replace(/^[\n]+/, "") || "";
+              // 将新文本分割成字符数组
+              const chars = textToAdd.split('');
+
+              // 等待前一个处理完成后再处理新的内容
+              processingPromise = processingPromise.then(async () => {
+                for (const char of chars) {
+                  if (controller.signal.aborted) return;
+                  accumulatedResponse += char;
+
+                  await new Promise(resolve => {
+                    requestAnimationFrame(() => {
+                      // 在流式响应过程中也应用格式化
+                      const formattedText = formatMarkdownText(accumulatedResponse);
+                      setMessages(prev =>
+                        prev.map(msg =>
+                          msg.id === assistantMessageId
+                            ? { ...msg, content: formattedText }
+                            : msg
+                        )
+                      );
+                      setTimeout(resolve, 30);
+                    });
+                  });
+                }
+              });
+
+              await processingPromise; // 等待当前块处理完成
             }
           } catch (e) { }
-
-          // 确保消息内容被完整添加
-          accumulatedResponse += textToAdd
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId ? { ...msg, content: accumulatedResponse } : msg
-            )
-          )
         },
         controller.signal
       );
-
-      // 确保在流结束后再次更新最终的消息
-      if (accumulatedResponse) {
-        const formattedResponse = formatMarkdownText(accumulatedResponse);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId ? { ...msg, content: formattedResponse } : msg
-          )
-        );
-      }
     } catch (error: unknown) {
       setMessages((prev) =>
         prev.map((m) =>
@@ -248,6 +327,10 @@ export default function DocumentChat() {
           {/* {previewUrl} */}
           {previewUrl ? (
             <iframe src={previewUrl} className="w-full h-full" />
+          ) : pdfData ? (
+            <div className="w-full h-full overflow-auto flex justify-center">
+              <canvas ref={canvasRef} className="max-w-full" />
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>
           )}

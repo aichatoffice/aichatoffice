@@ -91,7 +91,7 @@ export default function Home() {
               type="file"
               className="hidden"
               id="file-upload"
-              accept=".pdf,.docx,.doc,.xlsx,.pptx"
+              accept=".pdf,.docx,.xlsx,.pptx"
               onChange={handleFileSelect}
             />
             <label

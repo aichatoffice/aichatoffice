@@ -83,7 +83,7 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
           ref={fileInputRef}
           className="hidden"
           onChange={handleFileSelect}
-          accept=".pdf,.docx,.doc,.xlsx,.pptx"
+          accept=".pdf,.docx,.xlsx,.pptx"
         />
       </div>
 
