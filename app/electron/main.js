@@ -334,6 +334,8 @@ async function runServer() {
     const cmds = ["--config=" + configPath, "server"];
     const sdkCmds = ["--config=" + sdkConfigPath, "api", "--local-callback-addr=" + getServer()];
 
+    writeLog(`---------------------> "--local-callback-addr=" + ${getServer()}`)
+
     writeLog(`booting kernel [${serverPath} ${cmds.join(" ")}]`);
     writeLog(`booting sdk [${sdkServerPath} ${sdkCmds.join(" ")}]`);
 
@@ -343,7 +345,7 @@ async function runServer() {
       if (!await startKernelServer(serverPath, cmds)) {
         return false;
       }
-      await sleep(2000);
+      // await sleep(2000);
       // 启动 SDK 服务
       if (!await startSDKServer(sdkServerPath, sdkCmds)) {
         return false;
@@ -691,14 +693,15 @@ function generateRuntimeConfig() {
   const runtimeConfig =
     `
 [server]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = ${kernelPort}
 enableAccessInterceptor = true
 enableAccessInterceptorRes = true
 embedPath = "dist"
 
 [logger]
-dir = "${logsDir}"
+# dir = "${logsDir}"
+writer = "stdout"
 
 [leveldb]
 path = "${path.join(confDir, "leveldb")}"
@@ -713,10 +716,11 @@ resourcePath = "${isDevEnv ? "./resource" : path.join(process.resourcesPath, "el
 [userChat]
 reset = ["/reset"]
 timeout = 300
-convertedTextDir = "${path.join(confDir, "converted")}"
+# conversationLimit = 5
+convertedTextDir = "converted"
 
 [openai]
-configMode = "local"
+configMode = "local"                                         # local 本地配置，remote 远程回调配置
 baseUrl = "https://api.siliconflow.cn/v1"
 textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
@@ -757,12 +761,12 @@ cdnDir = "${cdnDir}"
 
 [server.http.api]
 network = "tcp4"
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = ${kernelSDKPort}
 embedPath = "dist"
 
 [server.governor.api]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = ${governorApiPort}
 
 [server.grpc]
@@ -770,16 +774,13 @@ port = ${grpcPort}
 maxRecvMsgSize = 300
 maxSendMsgSize = 10
 
-[logger]
-dir = "${path.join(confDir, "logs")}"
-
 [logger.default]
 level = "debug"
-writer = "stderr"
+writer = "stdout"
 
 [logger.ego]
 level = "info"
-writer = "stderr"
+writer = "stdout"
 
 [preview]
 fileValidDays = 7
@@ -839,7 +840,7 @@ timeout = 300
 
 
 [openai]
-configMode = "remote"  # local 本地配置，remote 远程回调配置
+configMode = "local"  # local 本地配置，remote 远程回调配置
 `
   // 将配置写入文件
   const configPath = path.join(configDir, "config.toml");
@@ -941,12 +942,13 @@ async function waitForServerReady(process, serverType) {
         process.kill();
         resolve(false);
       }
-    }, 8000);
+    }, 20000);
 
     process.stdout.on('data', (data) => {
       const output = data.toString();
       writeLog(`${serverType} stdout: ${output}`);
-      if ((serverType == 'kernel' && output.includes('server')) || (serverType == 'SDK' && output.includes(localServer))) {
+      // if ((serverType == 'kernel' && output.includes('server')) || (serverType == 'SDK' && output.includes(localServer))) {
+      if (output.includes('server')) {
         isStarted = true;
         clearTimeout(timeout);
         resolve(true);
