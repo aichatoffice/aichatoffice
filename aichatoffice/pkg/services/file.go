@@ -1,11 +1,11 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -14,16 +14,16 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 
 	"aichatoffice/pkg/models/dto"
-	"aichatoffice/pkg/models/leveldb"
+	"aichatoffice/pkg/models/store"
 )
 
 type FileService struct {
-	db *leveldb.LevelDB
+	store store.FileStore
 }
 
-func NewFileService(db *leveldb.LevelDB) *FileService {
+func NewFileService(s store.FileStore) *FileService {
 	return &FileService{
-		db: db,
+		store: s,
 	}
 }
 
@@ -47,7 +47,7 @@ func (f *FileService) InitCaseFile() {
 
 		// 使用相对路径作为键，将文件内容作为值存入LevelDB
 		key := fmt.Sprintf("case_%s", fileName)
-		err = f.db.SetFile(key, dto.File{
+		err = f.store.SetFile(context.Background(), key, dto.File{
 			ID:         key,
 			Name:       fileName,
 			CreateTime: time.Now().Unix(),
@@ -70,33 +70,15 @@ func (f *FileService) InitCaseFile() {
 }
 
 func (f *FileService) GetFilesList(c *gin.Context) (files []dto.File, err error) {
-	iter := f.db.DB.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		key := string(iter.Key())
-		fmt.Println(key, "key")
-		if key == "" || strings.HasPrefix(key, "custom_tool") || strings.HasPrefix(key, "ai") || strings.HasPrefix(key, "convert_") || strings.HasPrefix(key, "case_") {
-			continue
-		}
-		metaData, err := f.db.GetFile(key)
-		if err != nil {
-			continue // 跳过无法访问的文件
-		}
-		files = append(files, metaData)
-	}
-
-	if err = iter.Error(); err != nil {
-		return nil, err
-	}
-	return files, nil
+	return f.store.GetFilesList(c)
 }
 
 func (f *FileService) UploadFile(c *gin.Context, file dto.File) error {
-	return f.db.SetFile(file.ID, file)
+	return f.store.SetFile(c, file.ID, file)
 }
 
 func (f *FileService) GetFile(c *gin.Context, fileId string) (file dto.File, err error) {
-	return f.db.GetFile(fileId)
+	return f.store.GetFile(c, fileId)
 }
 
 func (f *FileService) GetDownloadUrl(fileId string) (url string) {
@@ -105,5 +87,5 @@ func (f *FileService) GetDownloadUrl(fileId string) (url string) {
 }
 
 func (f *FileService) DeleteFile(c *gin.Context, fileId string) (err error) {
-	return f.db.DeleteFile(fileId)
+	return f.store.DeleteFile(c, fileId)
 }

@@ -12,3 +12,7 @@ type File struct {
 	ModifierId string `json:"modifier_id"`
 	Content    []byte `json:"content"`
 }
+
+func (f *File) TableName() string {
+	return "files"
+}

@@ -3,6 +3,11 @@ enableAccessInterceptor = true
 enableAccessInterceptorRes = true
 port = 9001
 
+[store]
+type = "leveldb"
+enableExpireJob = true
+expireJobInterval = "5s"
+
 [leveldb]
 path = "~/workspace/public/aichatoffice/aichatoffice/leveldb"
 

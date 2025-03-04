@@ -13,16 +13,17 @@ import (
 	"go.uber.org/zap"
 
 	"aichatoffice/pkg/models/dto"
+	"aichatoffice/pkg/models/store"
 	aisvc "aichatoffice/pkg/services/ai"
 	"aichatoffice/pkg/utils"
 )
 
 type ChatSvc struct {
-	chatStore ChatStore
+	chatStore store.ChatStore
 	aiSvc     *aisvc.AiWrapper
 }
 
-func NewChatSvc(chatRepo ChatStore, aiSvc *aisvc.AiWrapper) *ChatSvc {
+func NewChatSvc(chatRepo store.ChatStore, aiSvc *aisvc.AiWrapper) *ChatSvc {
 	RegisterContentHandler("text", NewContentText())
 	return &ChatSvc{
 		chatStore: chatRepo,

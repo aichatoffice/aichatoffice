@@ -702,7 +702,7 @@ embedPath = "dist"
 writer = "stdout"
 
 [leveldb]
-path = "${path.join(confDir, "leveldb")}"
+path = "${path.join(confDir, "leveldbstore")}"
 
 [host]
 downloadUrlPrefix = "${localServer}:${kernelPort}"

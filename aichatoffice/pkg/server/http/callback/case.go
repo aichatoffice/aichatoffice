@@ -11,6 +11,7 @@ import (
 	"aichatoffice/pkg/invoker"
 )
 
+// todo 现在是写死的
 func Verify(c *gin.Context) {
 	// fileId := c.Param("fileId")
 	// invoker.Leveldb.GetFile(fileId)
@@ -29,7 +30,7 @@ func Verify(c *gin.Context) {
 
 func GetFile(c *gin.Context) {
 	fileId := c.Param("fileId")
-	file, err := invoker.Leveldb.GetFile(fileId)
+	file, err := invoker.FileStore.GetFile(c, fileId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "0",

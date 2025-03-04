@@ -2,12 +2,13 @@ package invoker
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gotomicro/ego/core/econf"
-	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 
-	"aichatoffice/pkg/models/leveldb"
+	"aichatoffice/pkg/models/leveldbstore"
+	"aichatoffice/pkg/models/store"
 	"aichatoffice/pkg/services"
 	aisvc "aichatoffice/pkg/services/ai"
 	chatsvc "aichatoffice/pkg/services/chat"
@@ -16,27 +17,42 @@ import (
 
 var (
 	Gin         *egin.Component
-	Leveldb     *leveldb.LevelDB
 	FileService *services.FileService
-	Chat        *chatsvc.ChatSvc
+	ChatService *chatsvc.ChatSvc
+
+	// store
+	FileStore store.FileStore
+	ChatStore store.ChatStore
 )
 
 func Init() (err error) {
-	fmt.Println("server", econf.GetString("server.port"))
 	Gin = egin.Load("server").Build(egin.WithEmbedFs(ui.WebUI))
-	Leveldb, err = leveldb.NewLevelDB()
+	err = initStore()
 	if err != nil {
-		elog.Panic("Failed to initialize Leveldb")
-	}
-	FileService = services.NewFileService(Leveldb)
-	FileService.InitCaseFile()
-
-	chatStore, err := chatsvc.NewChatStore(*Leveldb)
-	if err != nil {
-		return fmt.Errorf("service init chat store failed: %w", err)
+		return fmt.Errorf("service init store failed: %w", err)
 	}
 
 	aiSvc := aisvc.NewAiWrapper()
-	Chat = chatsvc.NewChatSvc(chatStore, aiSvc)
+	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc)
+	return nil
+}
+
+func initStore() (err error) {
+	switch econf.GetString("store.type") {
+	case "leveldb":
+		leveldb, err := leveldbstore.NewLevelDB()
+		if err != nil {
+			return fmt.Errorf("service init leveldb failed: %w", err)
+		}
+		FileStore = leveldb
+		ChatStore = leveldb
+		if econf.GetInt("store.enableExpireJob") > 0 {
+			interval := econf.GetDuration("store.expireJobInterval")
+			if interval <= 0 {
+				interval = 5 * time.Second
+			}
+			ChatStore.RunDeleteExpireKeysCronjob(interval)
+		}
+	}
 	return nil
 }

@@ -1,6 +1,41 @@
 package dto
 
 // todo 优化顺序和排版
+
+// -------- 数据库表结构 --------
+type ChatConversation struct {
+	ConversationId string          `json:"conversation_id"`
+	System         string          `json:"system"`
+	FileGuid       string          `json:"file_guid"`
+	UserId         string          `json:"user_id"`
+	Messages       []ChatMessageDO `json:"messages"`
+}
+
+func (c *ChatConversation) TableName() string {
+	return "chat_conversations"
+}
+
+type ChatMessage struct {
+	MessageId   string                 `json:"message_id,omitempty"`
+	Role        ChatMessageRole        `json:"role,omitempty"`
+	Type        ChatMessageType        `json:"type,omitempty"`
+	SentenceId  int                    `json:"sentence_id"`
+	IsEnd       bool                   `json:"is_end,omitempty"`
+	IsTruncated bool                   `json:"is_truncated,omitempty"`
+	Content     ChatContents           `json:"content,omitempty"`
+	Text        string                 `json:"text,omitempty"`
+	Created     int64                  `json:"created,omitempty"` // 目前用来给消息排序
+	ErrorCode   int                    `json:"error_code,omitempty"`
+	ErrorMsg    string                 `json:"error_msg,omitempty"`
+	Usage       *ChatMessageTokenUsage `json:"usage,omitempty"`
+}
+
+func (c *ChatMessage) TableName() string {
+	return "chat_messages"
+}
+
+// -------- 数据库表结构END --------
+
 type ChatMessageRole string
 
 const (
@@ -82,21 +117,6 @@ type ChatRequest struct {
 
 type ChatContents []ChatContent
 
-type ChatMessage struct {
-	MessageId   string                 `json:"message_id,omitempty"`
-	Role        ChatMessageRole        `json:"role,omitempty"`
-	Type        ChatMessageType        `json:"type,omitempty"`
-	SentenceId  int                    `json:"sentence_id"`
-	IsEnd       bool                   `json:"is_end,omitempty"`
-	IsTruncated bool                   `json:"is_truncated,omitempty"`
-	Content     ChatContents           `json:"content,omitempty"`
-	Text        string                 `json:"text,omitempty"`
-	Created     int64                  `json:"created,omitempty"` // 目前用来给消息排序
-	ErrorCode   int                    `json:"error_code,omitempty"`
-	ErrorMsg    string                 `json:"error_msg,omitempty"`
-	Usage       *ChatMessageTokenUsage `json:"usage,omitempty"`
-}
-
 type ChatMessageTokenUsage struct {
 	PromptTokens     int `json:"prompt_tokens,omitempty"`     // 问题tokens数
 	CompletionTokens int `json:"completion_tokens,omitempty"` // 回答tokens数
@@ -105,14 +125,6 @@ type ChatMessageTokenUsage struct {
 type ChatMessageDO struct {
 	ChatMessage
 	NeedAIChat bool `json:"need_ai_chat"`
-}
-
-type ChatConversation struct {
-	ConversationId string          `json:"conversation_id"`
-	System         string          `json:"system"`
-	FileGuid       string          `json:"file_guid"`
-	UserId         string          `json:"user_id"`
-	Messages       []ChatMessageDO `json:"messages"`
 }
 
 type TextResponse struct {

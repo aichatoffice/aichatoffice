@@ -32,7 +32,7 @@ func NewConversation(c *gin.Context) {
 		return
 	}
 
-	cid, err := invoker.Chat.NewConversation(c.Request.Context(), userId, req.System, req.FileGuid)
+	cid, err := invoker.ChatService.NewConversation(c.Request.Context(), userId, req.System, req.FileGuid)
 	if err != nil {
 		if errors.Is(err, dto.ErrConversationLimitReached) {
 			c.AbortWithStatusJSON(400, gin.H{"msg": err.Error(), "code": 400})
@@ -58,7 +58,7 @@ func GetConversation(c *gin.Context) {
 		c.AbortWithStatus(400)
 		return
 	}
-	conversation, err := invoker.Chat.GetConversation(c.Request.Context(), userId, conversationId)
+	conversation, err := invoker.ChatService.GetConversation(c.Request.Context(), userId, conversationId)
 	if err != nil {
 		elog.Error("get conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
 		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
@@ -82,7 +82,7 @@ func DeleteConversation(c *gin.Context) {
 		return
 	}
 
-	err := invoker.Chat.DeleteConversation(c.Request.Context(), userId, conversationId)
+	err := invoker.ChatService.DeleteConversation(c.Request.Context(), userId, conversationId)
 	if err != nil {
 		elog.Error("delete conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
 		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
@@ -99,7 +99,7 @@ func BreakConversation(c *gin.Context) {
 		return
 	}
 	conversationId := c.Param("conversation_id")
-	err := invoker.Chat.BreakConversation(c.Request.Context(), userId, conversationId)
+	err := invoker.ChatService.BreakConversation(c.Request.Context(), userId, conversationId)
 	if err != nil {
 		elog.Error("break conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
 		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
@@ -178,7 +178,7 @@ func Chat(c *gin.Context) {
 		}
 		c.Status(http.StatusOK)
 	}()
-	err = invoker.Chat.Chat(c.Request.Context(), userId, conversationId, msg, req.RegenMessageId, event)
+	err = invoker.ChatService.Chat(c.Request.Context(), userId, conversationId, msg, req.RegenMessageId, event)
 	if err != nil {
 		elog.Error("chat failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
 		apiErr := dto.FromError(err)

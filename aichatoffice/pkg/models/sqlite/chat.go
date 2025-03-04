@@ -1,4 +1,4 @@
-package leveldbstore
+package sqlitestore
 
 import (
 	"context"
@@ -23,10 +23,10 @@ const (
 	stopKeyTTL      = time.Minute * 10
 )
 
-func (c *LevelDBStore) NewConversation(ctx context.Context, userId string, conversationId string, system string, fileGuid string) error {
-	key := c.conversationKey(userId, conversationId)
+func (s *SqliteStore) NewConversation(ctx context.Context, userId string, conversationId string, system string, fileGuid string) error {
+	key := s.conversationKey(userId, conversationId)
 	// check if conversation exists
-	exists, err := c.DB.Has([]byte(key), nil)
+	exists, err := s.DB.Has([]byte(key), nil)
 	if err != nil {
 		elog.Error("NewConversation_error has key", elog.FieldErr(err), l.S("key", key))
 		return err
@@ -48,12 +48,12 @@ func (c *LevelDBStore) NewConversation(ctx context.Context, userId string, conve
 		return err
 	}
 	// set info
-	err = c.DB.Put([]byte(key), []byte(infoStr), nil)
+	err = s.DB.Put([]byte(key), []byte(infoStr), nil)
 	if err != nil {
 		return err
 	}
 	// expire
-	err = c.EXPIRE(key, conversationTTL)
+	err = s.EXPIRE(key, conversationTTL)
 	if err != nil {
 		elog.Error("NewConversation_error expire", elog.FieldErr(err), l.S("key", key))
 		return err
@@ -62,10 +62,10 @@ func (c *LevelDBStore) NewConversation(ctx context.Context, userId string, conve
 }
 
 // GetConversation get all conversation messages from redis
-func (c *LevelDBStore) GetConversation(ctx context.Context, userId string, conversationId string) (*dto.ChatConversation, error) {
-	key := c.conversationKey(userId, conversationId)
+func (s *SqliteStore) GetConversation(ctx context.Context, userId string, conversationId string) (*dto.ChatConversation, error) {
+	key := s.conversationKey(userId, conversationId)
 	// get info
-	infoStr, err := c.DB.Get([]byte(key), nil)
+	infoStr, err := s.DB.Get([]byte(key), nil)
 	if err != nil {
 		elog.Error("GetConversation_error get info", elog.FieldErr(err), l.S("key", key))
 		return nil, err
@@ -77,9 +77,9 @@ func (c *LevelDBStore) GetConversation(ctx context.Context, userId string, conve
 		return nil, err
 	}
 	// get messages
-	key = c.conversationMessageKey(userId, conversationId)
+	key = s.conversationMessageKey(userId, conversationId)
 	// hgetall
-	msgMap, err := c.HGETALL(key)
+	msgMap, err := s.HGETALL(key)
 	if err != nil {
 		elog.Error("GetConversation_error get messages", elog.FieldErr(err), l.S("key", key))
 		return nil, err
@@ -104,8 +104,8 @@ func (c *LevelDBStore) GetConversation(ctx context.Context, userId string, conve
 }
 
 // AddMessage add message to conversation
-func (c *LevelDBStore) AddMessage(ctx context.Context, userId string, conversationId string, msg dto.ChatMessageDO) error {
-	key := c.conversationMessageKey(userId, conversationId)
+func (s *SqliteStore) AddMessage(ctx context.Context, userId string, conversationId string, msg dto.ChatMessageDO) error {
+	key := s.conversationMessageKey(userId, conversationId)
 	// encode msg
 	var msgStr string
 	msgStr, err := jsoniter.MarshalToString(msg)
@@ -113,13 +113,13 @@ func (c *LevelDBStore) AddMessage(ctx context.Context, userId string, conversati
 		return err
 	}
 	// hset
-	err = c.HSET(key, msg.MessageId, msgStr)
+	err = s.HSET(key, msg.MessageId, msgStr)
 	if err != nil {
 		elog.Error("AddMessage_error hset", elog.FieldErr(err), l.S("key", key), l.S("msgStr", msgStr))
 		return err
 	}
 	// expire
-	err = c.EXPIRE(key, messageTTL)
+	err = s.EXPIRE(key, messageTTL)
 	if err != nil {
 		elog.Error("AddMessage_error expire", elog.FieldErr(err), l.S("key", key))
 		return err
@@ -128,16 +128,16 @@ func (c *LevelDBStore) AddMessage(ctx context.Context, userId string, conversati
 }
 
 // BreakConversation break conversation by set a stop key
-func (c *LevelDBStore) BreakConversation(ctx context.Context, userId string, conversationId string) error {
-	key := c.conversationKey(userId, conversationId)
+func (s *SqliteStore) BreakConversation(ctx context.Context, userId string, conversationId string) error {
+	key := s.conversationKey(userId, conversationId)
 	// set stop key
-	err := c.DB.Put([]byte(key+":stop"), []byte("1"), nil)
+	err := s.DB.Put([]byte(key+":stop"), []byte("1"), nil)
 	if err != nil {
 		elog.Error("BreakConversation_error put stop key", elog.FieldErr(err), l.S("key", key))
 		return err
 	}
 
-	err = c.EXPIRE(key, stopKeyTTL)
+	err = s.EXPIRE(key, stopKeyTTL)
 	if err != nil {
 		elog.Error("BreakConversation_error expire", elog.FieldErr(err), l.S("key", key))
 		return err
@@ -146,10 +146,10 @@ func (c *LevelDBStore) BreakConversation(ctx context.Context, userId string, con
 }
 
 // IsConversationBreak check if conversation is break
-func (c *LevelDBStore) IsConversationBreak(ctx context.Context, userId string, conversationId string) (bool, error) {
-	key := c.conversationKey(userId, conversationId)
+func (s *SqliteStore) IsConversationBreak(ctx context.Context, userId string, conversationId string) (bool, error) {
+	key := s.conversationKey(userId, conversationId)
 	// check stop key
-	exists, err := c.DB.Has([]byte(key+":stop"), nil)
+	exists, err := s.DB.Has([]byte(key+":stop"), nil)
 	if err != nil {
 		return false, err
 	}
@@ -157,17 +157,17 @@ func (c *LevelDBStore) IsConversationBreak(ctx context.Context, userId string, c
 }
 
 // ResumeConversation resume conversation by remove stop key
-func (c *LevelDBStore) ResumeConversation(ctx context.Context, userId string, conversationId string) error {
-	key := c.conversationKey(userId, conversationId)
+func (s *SqliteStore) ResumeConversation(ctx context.Context, userId string, conversationId string) error {
+	key := s.conversationKey(userId, conversationId)
 	// remove stop key
-	err := c.DB.Delete([]byte(key+":stop"), nil)
+	err := s.DB.Delete([]byte(key+":stop"), nil)
 	return err
 }
 
 // CountConversation count all conversations from one user
-func (c *LevelDBStore) CountConversation(ctx context.Context, userId string) (int, error) {
+func (s *SqliteStore) CountConversation(ctx context.Context, userId string) (int, error) {
 	// 根据前缀模糊搜索
-	iter := c.DB.NewIterator(util.BytesPrefix([]byte("ai:conversation:"+userId)), nil)
+	iter := s.DB.NewIterator(util.BytesPrefix([]byte("ai:conversation:"+userId)), nil)
 	defer iter.Release()
 	count := 0
 	for iter.Next() {
@@ -177,19 +177,19 @@ func (c *LevelDBStore) CountConversation(ctx context.Context, userId string) (in
 }
 
 // DeleteConversation delete conversation
-func (c *LevelDBStore) DeleteConversation(ctx context.Context, userId string, conversationId string) error {
-	conversationKey := c.conversationKey(userId, conversationId)
-	msgKey := c.conversationMessageKey(userId, conversationId)
+func (s *SqliteStore) DeleteConversation(ctx context.Context, userId string, conversationId string) error {
+	conversationKey := s.conversationKey(userId, conversationId)
+	msgKey := s.conversationMessageKey(userId, conversationId)
 
 	// 删除对话 key
-	err := c.DB.Delete([]byte(conversationKey), nil)
+	err := s.DB.Delete([]byte(conversationKey), nil)
 	if err != nil {
 		elog.Error("DeleteConversation_error delete conversation", elog.FieldErr(err), l.S("conversationKey", conversationKey))
 		return err
 	}
 
 	// 删除消息 key
-	err = c.DB.Delete([]byte(msgKey), nil)
+	err = s.DB.Delete([]byte(msgKey), nil)
 	if err != nil {
 		elog.Error("DeleteConversation_error delete message", elog.FieldErr(err), l.S("msgKey", msgKey))
 		return err
@@ -197,17 +197,17 @@ func (c *LevelDBStore) DeleteConversation(ctx context.Context, userId string, co
 	return nil
 }
 
-func (c *LevelDBStore) conversationKey(userId string, conversationId string) string {
+func (s *SqliteStore) conversationKey(userId string, conversationId string) string {
 	return fmt.Sprintf("ai:conversation:%s:%s", userId, conversationId)
 }
 
-func (c *LevelDBStore) conversationMessageKey(userId string, conversationId string) string {
+func (s *SqliteStore) conversationMessageKey(userId string, conversationId string) string {
 	return fmt.Sprintf("ai:conversation:%s:%s:msgs", userId, conversationId)
 }
 
 // 实现 redis HSET 功能
-func (c *LevelDBStore) HSET(mainKey, hashKey, hashValue string) error {
-	_, err := c.DB.Has([]byte(mainKey), nil)
+func (s *SqliteStore) HSET(mainKey, hashKey, hashValue string) error {
+	_, err := s.DB.Has([]byte(mainKey), nil)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		elog.Error("hset_error has mainKey", elog.FieldErr(err), l.S("mainKey", mainKey))
 		return err
@@ -215,21 +215,21 @@ func (c *LevelDBStore) HSET(mainKey, hashKey, hashValue string) error {
 
 	// 不存在则新建整个 key
 	if err == leveldb.ErrNotFound {
-		hash := c.genNewHash()
+		hash := s.genNewHash()
 		hash[hashKey] = hashValue
 		hashStr, err := jsoniter.MarshalToString(hash)
 		if err != nil {
 			elog.Error("hset_error marshal hash", elog.FieldErr(err), l.S("mainKey", mainKey))
 			return err
 		}
-		err = c.DB.Put([]byte(mainKey), []byte(hashStr), nil)
+		err = s.DB.Put([]byte(mainKey), []byte(hashStr), nil)
 		if err != nil {
 			elog.Error("hset_error put hash", elog.FieldErr(err), l.S("mainKey", mainKey), l.S("hashKey", hashKey), l.S("hashValue", hashValue))
 			return err
 		}
 	} else {
 		// 存在则更新 hash
-		hash, err := c.HGETALL(mainKey)
+		hash, err := s.HGETALL(mainKey)
 		if err != nil {
 			elog.Error("hset_error get hash", elog.FieldErr(err), l.S("mainKey", mainKey))
 			return err
@@ -240,7 +240,7 @@ func (c *LevelDBStore) HSET(mainKey, hashKey, hashValue string) error {
 			elog.Error("hset_error marshal hash", elog.FieldErr(err), l.S("mainKey", mainKey))
 			return err
 		}
-		err = c.DB.Put([]byte(mainKey), []byte(hashStr), nil)
+		err = s.DB.Put([]byte(mainKey), []byte(hashStr), nil)
 		if err != nil {
 			elog.Error("hset_error put hash", elog.FieldErr(err), l.S("mainKey", mainKey))
 			return err
@@ -250,8 +250,8 @@ func (c *LevelDBStore) HSET(mainKey, hashKey, hashValue string) error {
 }
 
 // 实现 redis HGETALL 功能
-func (c *LevelDBStore) HGETALL(key string) (map[string]string, error) {
-	values, err := c.DB.Get([]byte(key), nil)
+func (s *SqliteStore) HGETALL(key string) (map[string]string, error) {
+	values, err := s.DB.Get([]byte(key), nil)
 	if err != nil {
 		if errors.Is(err, leveldb.ErrNotFound) {
 			return make(map[string]string), nil
@@ -270,8 +270,8 @@ func (c *LevelDBStore) HGETALL(key string) (map[string]string, error) {
 }
 
 // 实现 redis HGET 功能
-func (c *LevelDBStore) HGET(key, hashKey string) (string, error) {
-	hash, err := c.HGETALL(key)
+func (s *SqliteStore) HGET(key, hashKey string) (string, error) {
+	hash, err := s.HGETALL(key)
 	if err != nil {
 		elog.Error("hget_error get hash", elog.FieldErr(err), l.S("key", key), l.S("hashKey", hashKey))
 		return "", err
@@ -285,13 +285,13 @@ const (
 
 // 实现 redis EXPIRE 功能
 // 做法是存一个过期时间的 hash，然后业务层做定时任务删除
-func (c *LevelDBStore) EXPIRE(conversationKey string, ttl time.Duration) error {
-	return c.HSET(expireMainKey, conversationKey, fmt.Sprintf("%d", time.Now().Add(ttl).Unix()))
+func (s *SqliteStore) EXPIRE(conversationKey string, ttl time.Duration) error {
+	return s.HSET(expireMainKey, conversationKey, fmt.Sprintf("%d", time.Now().Add(ttl).Unix()))
 }
 
 // 删除所有过期 key
-func (c *LevelDBStore) DeleteExpireKeys() error {
-	expireMap, err := c.HGETALL(expireMainKey)
+func (s *SqliteStore) DeleteExpireKeys() error {
+	expireMap, err := s.HGETALL(expireMainKey)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		elog.Error("DeleteExpireKeys_error get expireMap", elog.FieldErr(err), l.S("expireMainKey", expireMainKey))
 		return err
@@ -300,7 +300,7 @@ func (c *LevelDBStore) DeleteExpireKeys() error {
 	for conversationKey, timeStr := range expireMap {
 		expireTime := cast.ToInt64(timeStr)
 		if time.Now().Unix() > expireTime {
-			err = c.DB.Delete([]byte(conversationKey), nil)
+			err = s.DB.Delete([]byte(conversationKey), nil)
 			if err != nil {
 				elog.Error("DeleteExpireKeys_error delete key", elog.FieldErr(err), l.S("key", conversationKey))
 			}
@@ -315,7 +315,7 @@ func (c *LevelDBStore) DeleteExpireKeys() error {
 		elog.Error("DeleteExpireKeys_error marshal expireMap", elog.FieldErr(err), l.S("expireMainKey", expireMainKey))
 		return err
 	}
-	err = c.DB.Put([]byte(expireMainKey), []byte(expireStr), nil)
+	err = s.DB.Put([]byte(expireMainKey), []byte(expireStr), nil)
 	if err != nil {
 		elog.Error("DeleteExpireKeys_error put expireMap", elog.FieldErr(err), l.S("expireMainKey", expireMainKey))
 		return err
@@ -325,15 +325,15 @@ func (c *LevelDBStore) DeleteExpireKeys() error {
 	return nil
 }
 
-func (c *LevelDBStore) RunDeleteExpireKeysCronjob(interval time.Duration) {
+func (s *SqliteStore) RunDeleteExpireKeysCronjob(interval time.Duration) {
 	go func() {
 		for {
 			time.Sleep(interval)
-			c.DeleteExpireKeys()
+			s.DeleteExpireKeys()
 		}
 	}()
 }
 
-func (c *LevelDBStore) genNewHash() map[string]string {
+func (s *SqliteStore) genNewHash() map[string]string {
 	return make(map[string]string)
 }

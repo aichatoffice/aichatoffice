@@ -39,7 +39,7 @@ ARG TARGETARCH
 RUN GO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH make build \
     && mkdir /data/ \
     && mkdir /data/files/ \
-    && mkdir /data/leveldb/ \
+    && mkdir /data/leveldbstore/ \
     && mv ./bin/*  /data/ \
     && mv ./config  /data/ \
     && mv ./resource /data/
