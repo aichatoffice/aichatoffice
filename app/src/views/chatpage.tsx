@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
+import { ChevronRight, ChevronLeft, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
@@ -55,6 +55,9 @@ export default function DocumentChat() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [pdfData, setPdfData] = useState<Uint8Array | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
 
   useEffect(() => {
     scrollToBottom()
@@ -107,6 +110,8 @@ export default function DocumentChat() {
       // 直接使用 Uint8Array 数据加载 PDF
       const loadingTask = pdfjsLib.getDocument({ data: pdfData })
       const pdf = await loadingTask.promise
+      setPdfDoc(pdf)
+      setTotalPages(pdf.numPages)
       await renderPage(1, pdf)
     } catch (error) {
       console.error('PDF 加载失败:', error)
@@ -319,6 +324,13 @@ export default function DocumentChat() {
     return formattedText
   }
 
+  // 添加页面切换函数
+  const changePage = async (newPage: number) => {
+    if (!pdfDoc || newPage < 1 || newPage > totalPages) return
+    setCurrentPage(newPage)
+    await renderPage(newPage, pdfDoc)
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <div className="flex flex-1 overflow-hidden">
@@ -328,8 +340,31 @@ export default function DocumentChat() {
           {previewUrl ? (
             <iframe src={previewUrl} className="w-full h-full" />
           ) : pdfData ? (
-            <div className="w-full h-full overflow-auto flex justify-center">
-              <canvas ref={canvasRef} className="max-w-full" />
+            <div className="w-full h-full overflow-auto flex flex-col items-center">
+              <canvas ref={canvasRef} className="h-[calc(100%-55px)] max-w-full" />
+              {totalPages > 0 && (
+                <div className="flex items-center gap-2 mt-2 mb-2 text-sm">
+                  <Button
+                    onClick={() => changePage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    size="sm"
+                    className="bg-gray-100 hover:bg-gray-200"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-gray-600">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    onClick={() => changePage(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    size="sm"
+                    className="bg-gray-200 hover:bg-gray-300"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>
