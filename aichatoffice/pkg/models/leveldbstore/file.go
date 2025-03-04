@@ -27,12 +27,12 @@ func (l *LevelDBStore) GetFile(ctx context.Context, fileID string) (file dto.Fil
 	return
 }
 
-func (l *LevelDBStore) SetFile(ctx context.Context, fileID string, f dto.File) error {
+func (l *LevelDBStore) SetFile(ctx context.Context, f dto.File) error {
 	data, err := json.Marshal(f)
 	if err != nil {
 		return err
 	}
-	return l.DB.Put([]byte(fileID), data, nil)
+	return l.DB.Put([]byte(f.FileID), data, nil)
 }
 
 func (l *LevelDBStore) DeleteFile(ctx context.Context, fileID string) error {

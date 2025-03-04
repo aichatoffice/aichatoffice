@@ -1,7 +1,8 @@
 package dto
 
 type File struct {
-	ID         string `json:"id"`
+	ID         int64  `json:"id"`
+	FileID     string `json:"file_id"`
 	Name       string `json:"name"`
 	Version    int64  `json:"version"`
 	Type       string `json:"type"`

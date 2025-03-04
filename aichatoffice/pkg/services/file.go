@@ -47,8 +47,8 @@ func (f *FileService) InitCaseFile() {
 
 		// 使用相对路径作为键，将文件内容作为值存入LevelDB
 		key := fmt.Sprintf("case_%s", fileName)
-		err = f.store.SetFile(context.Background(), key, dto.File{
-			ID:         key,
+		err = f.store.SetFile(context.Background(), dto.File{
+			FileID:     key,
 			Name:       fileName,
 			CreateTime: time.Now().Unix(),
 			Content:    data,
@@ -74,7 +74,7 @@ func (f *FileService) GetFilesList(c *gin.Context) (files []dto.File, err error)
 }
 
 func (f *FileService) UploadFile(c *gin.Context, file dto.File) error {
-	return f.store.SetFile(c, file.ID, file)
+	return f.store.SetFile(c, file)
 }
 
 func (f *FileService) GetFile(c *gin.Context, fileId string) (file dto.File, err error) {

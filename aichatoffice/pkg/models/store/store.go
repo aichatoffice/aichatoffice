@@ -12,7 +12,7 @@ import (
 // FileStore defines the abstraction of file storage and retrieval
 type FileStore interface {
 	GetFile(ctx context.Context, fileID string) (file dto.File, err error)
-	SetFile(ctx context.Context, fileID string, f dto.File) error
+	SetFile(ctx context.Context, f dto.File) error
 	DeleteFile(ctx context.Context, fileID string) error
 	GetFilesList(ctx context.Context) (files []dto.File, err error)
 }

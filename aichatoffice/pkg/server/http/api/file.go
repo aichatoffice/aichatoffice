@@ -73,7 +73,7 @@ func UploadFile(c *gin.Context) {
 	f := dto.File{
 		Name:       fileName,
 		Size:       int64(len(content)),
-		ID:         utils.GenFileGuid(),
+		FileID:     utils.GenFileGuid(),
 		Type:       mimeType,
 		CreateTime: time.Now().Unix(),
 		Content:    content,

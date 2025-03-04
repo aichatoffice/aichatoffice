@@ -110,7 +110,7 @@ func UploadFile(c *gin.Context) {
 	// f := dto.File{
 	// 	Name:       fileName,
 	// 	Size:       int64(len(content)),
-	// 	ID:         fmt.Sprintf("convert_%s", fileId),
+	// 	FileID:         fmt.Sprintf("convert_%s", fileId),
 	// 	Type:       mimeType,
 	// 	CreateTime: time.Now().Unix(),
 	// 	Content:    content,
