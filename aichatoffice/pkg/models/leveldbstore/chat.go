@@ -316,9 +316,22 @@ func (c LevelDB) DeleteExpireKeys() error {
 		return err
 	}
 	err = c.DB.Put([]byte(expireMainKey), []byte(expireStr), nil)
+	if err != nil {
+		elog.Error("DeleteExpireKeys_error put expireMap", elog.FieldErr(err), l.S("expireMainKey", expireMainKey))
+		return err
+	}
 
 	elog.Info("DeleteExpireKeys_success")
 	return nil
+}
+
+func (c LevelDB) RunDeleteExpireKeysCronjob(interval time.Duration) {
+	go func() {
+		for {
+			time.Sleep(interval)
+			c.DeleteExpireKeys()
+		}
+	}()
 }
 
 func (c LevelDB) genNewHash() map[string]string {
