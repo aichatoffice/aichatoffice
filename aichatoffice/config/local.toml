@@ -12,8 +12,8 @@ expireJobInterval = "5s"
 path = "~/workspace/public/aichatoffice/aichatoffice/leveldb"
 
 [host]
-downloadUrlPrefix = "http://172.16.21.165:9301"
-previewUrlPrefix = "http://172.16.21.165:9001"
+downloadUrlPrefix = "http://172.16.21.165:9301"  # aichatoffice 客户服务地址
+previewUrlPrefix = "http://172.16.21.165:9001"  # turboone 极速版sdk服务地址
 
 [case]
 resourcePath = "./resource"
