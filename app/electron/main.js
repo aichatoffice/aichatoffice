@@ -288,9 +288,14 @@ app.whenReady().then(() => {
 
   // 添加 dock 点击事件处理
   app.on('activate', () => {
-    if (mainWindow === null) {
+    // 检查 mainWindow 是否存在且未被销毁
+    if (!mainWindow || mainWindow.isDestroyed()) {
       initMainWindow()
     } else {
+      // 确保在显示窗口前检查其状态
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore()
+      }
       mainWindow.show()
     }
   })
@@ -353,7 +358,9 @@ async function runServer() {
     return true;
   } catch (error) {
     writeLog(`Server startup failed: ${error.message}`);
-    bootWindow?.destroy();
+    if (bootWindow && !bootWindow.isDestroyed()) {
+      bootWindow.destroy();
+    }
     return false;
   }
 }
@@ -599,6 +606,11 @@ const initMainWindow = () => {
   }
 
   mainWindow.on("close", (event) => {
+    // 确保 mainWindow 存在且未被销毁
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+
     // 在 macOS 上，点击红色关闭按钮时只隐藏窗口
     if (process.platform === 'darwin' && !isQuitting) {
       event.preventDefault();
@@ -606,9 +618,8 @@ const initMainWindow = () => {
       return;
     }
 
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("AIChatOffice-save-close", false);
-    }
+    // 发送保存信号
+    mainWindow.webContents.send("AIChatOffice-save-close", false);
   });
 
   // 添加以下代码来帮助调试
@@ -1044,16 +1055,31 @@ app.on('before-quit', () => {
 
 // 清理函数（建议在适当的地方调用，比如窗口关闭时）
 function cleanupStreams() {
-  for (const [requestId, reader] of streamReaders.entries()) {
-    reader.releaseLock();
-    streamReaders.delete(requestId);
-    abortControllers.delete(requestId);
-  }
-
-  for (const [conversationId, requestInfo] of activeConversationRequests.entries()) {
-    if (requestInfo.controller) {
-      requestInfo.controller.abort();
+  try {
+    for (const [requestId, reader] of streamReaders.entries()) {
+      if (reader && typeof reader.releaseLock === 'function') {
+        reader.releaseLock();
+      }
+      streamReaders.delete(requestId);
+      abortControllers.delete(requestId);
     }
-    activeConversationRequests.delete(conversationId);
+
+    for (const [conversationId, requestInfo] of activeConversationRequests.entries()) {
+      if (requestInfo && requestInfo.controller) {
+        requestInfo.controller.abort();
+      }
+      activeConversationRequests.delete(conversationId);
+    }
+  } catch (error) {
+    writeLog(`Error during cleanup: ${error.message}`);
   }
 }
+
+// 添加窗口状态追踪
+app.on('window-all-closed', () => {
+  // 在 macOS 上，除非用户使用 Cmd + Q 明确退出
+  // 否则保持应用程序活动状态
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
