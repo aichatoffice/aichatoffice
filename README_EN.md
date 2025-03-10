@@ -5,6 +5,12 @@
 ## Introduction
 AIChatOffice is an intelligent office assistant application built with Electron and React.
 
+## Download the key execution package
+- TURBOONRE: https://github.com/aichatoffice/aichatoffice/releases/download/aichatoffice/turboone
+  - Download and move to the `app/electron/server/sdk/` directory
+- AICHATOFFICE: https://github.com/aichatoffice/aichatoffice/releases/download/aichatoffice/aichatoffice
+  - Download and move to the `app/electron/server/` directory
+
 ## Tech Stack
 - Electron - Cross-platform desktop framework
 - React - UI library
