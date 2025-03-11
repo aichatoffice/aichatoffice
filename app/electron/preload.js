@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld('electron', {
       return ipcRenderer.invoke(channel, ...args)
     }
     throw new Error(`不允许使用通道 "${channel}"`)
+  },
+  on: (channel, callback) => {
+    ipcRenderer.on(channel, (event, ...args) => callback(...args))
   }
 }) 

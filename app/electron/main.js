@@ -2,7 +2,7 @@ import { app, protocol, net, BrowserWindow, screen, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import url from 'node:url'
-import fs from 'node:fs'
+import fs, { write } from 'node:fs'
 import gNet from 'net'
 import cp from 'child_process'
 import remote from '@electron/remote/main/index.js'
@@ -15,8 +15,8 @@ let mainWindow
 const appDir = path.dirname(app.getAppPath())
 const isDevEnv = process.env.NODE_ENV === "development"
 const appVer = app.getVersion()
-let kernelPort = 0 // 本地调试时需要修改为本地后服务端口
-let kernelSDKPort = 0
+let kernelPort = 9001 // 本地调试时需要修改为本地后服务端口
+let kernelSDKPort = 9101
 let governorApiPort = 0
 let grpcPort = 0
 
@@ -26,6 +26,10 @@ let kernelProcess
 let kernelSDKProcess
 let bootWindow
 let openAsHidden = false
+// 执行包下载
+const aichatofficeExec = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1757234029&Signature=BMbMoxVDl69QuCybkOvi5QEYvXA%3D"
+const turbooneExec = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1757233960&Signature=kzEOoP36qUj3u63yufzkUV4rrMg%3D"
+
 let workspaces = []
 remote.initialize()
 
@@ -320,7 +324,8 @@ async function runServer() {
     const { serverPath, sdkServerPath } = getServerPaths();
 
     // 检查服务程序是否存在
-    if (!isDevEnv && !checkServerExecutables(serverPath, sdkServerPath)) {
+    if (!await checkServerExecutables(serverPath, sdkServerPath)) {
+      // if (!isDevEnv && !checkServerExecutables(serverPath, sdkServerPath)) {
       return false;
     }
 
@@ -343,17 +348,17 @@ async function runServer() {
     writeLog(`booting sdk [${sdkServerPath} ${sdkCmds.join(" ")}]`);
 
     // 启动服务
-    if (!isDevEnv || workspaces.length > 0) {
-      // 启动主服务
-      if (!await startKernelServer(serverPath, cmds)) {
-        return false;
-      }
-      // await sleep(2000);
-      // 启动 SDK 服务
-      if (!await startSDKServer(sdkServerPath, sdkCmds)) {
-        return false;
-      }
+    // if (!isDevEnv || workspaces.length > 0) {
+    // 启动主服务
+    if (!await startKernelServer(serverPath, cmds)) {
+      return false;
     }
+    // await sleep(2000);
+    // 启动 SDK 服务
+    if (!await startSDKServer(sdkServerPath, sdkCmds)) {
+      return false;
+    }
+    // }
 
     return true;
   } catch (error) {
@@ -372,9 +377,13 @@ async function initBootWindow() {
     width: Math.floor(screen.getPrimaryDisplay().size.width / 2),
     height: Math.floor(screen.getPrimaryDisplay().workAreaSize.height / 2),
     frame: false,
-    backgroundColor: "#1e1e1e",
     resizable: false,
     icon: path.join(appDir, "stage", "icon-large.png"),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
   });
 
   const bootIndex = isDevEnv
@@ -393,29 +402,148 @@ async function initBootWindow() {
 }
 
 function getServerPaths() {
-  const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(process.resourcesPath, "electron", "server");
+  const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
   return {
     serverPath: path.join(basePath, 'aichatoffice'),
-    sdkServerPath: path.join(basePath, 'sdk', 'turboone')
+    sdkServerPath: path.join(basePath, 'turboone')
   };
 }
 
-function checkServerExecutables(serverPath, sdkServerPath) {
+async function checkServerExecutables(serverPath, sdkServerPath) {
+  // 分别检查每个可执行文件
+  const needsKernelDownload = !fs.existsSync(serverPath);
+  const needsSDKDownload = !fs.existsSync(sdkServerPath);
+
+  if (needsKernelDownload || needsSDKDownload) {
+    try {
+      // 分别下载所需的可执行文件
+      if (needsKernelDownload) {
+        await downloadExecutable(aichatofficeExec, serverPath, 'kernel');
+      }
+      if (needsSDKDownload) {
+        await downloadExecutable(turbooneExec, sdkServerPath, 'sdk');
+      }
+    } catch (error) {
+      showErrorWindow("⚠️ 下载失败 Download failed",
+        `<div>下载服务程序失败,请检查网络连接后重试。</div>
+         <div>Failed to download service programs, please check network connection and retry.</div>
+         <div><i>${error.message}</i></div>`);
+      bootWindow.destroy();
+      return false;
+    }
+  }
+
+  // 验证文件是否存在和可执行
   if (!fs.existsSync(serverPath)) {
     showErrorWindow("⚠️ 内核程序丢失 Kernel program is missing",
-      `<div>内核程序丢失，请重新安装 AIChatOffice ，并将 AIChatOffice 内核程序加入杀毒软件信任列表。</div><div>The kernel program is not found, please reinstall AIChatOffice and add AIChatOffice Kernel prgram into the trust list of your antivirus software.</div><div><i>${serverPath}</i></div>`);
+      `<div>内核程序丢失，请重新安装 AIChatOffice。</div>
+       <div>The kernel program is not found, please reinstall AIChatOffice.</div>
+       <div><i>${serverPath}</i></div>`);
     bootWindow.destroy();
     return false;
   }
 
   if (!fs.existsSync(sdkServerPath)) {
-    showErrorWindow("⚠️ 极速版sdk程序丢失 TurboOne program is missing",
-      `<div>极速版sdk程序丢失，请重新安装 AIChatOffice ，并将 AIChatOffice 极速版sdk程序加入杀毒软件信任列表。</div><div>The TurboOne program is not found, please reinstall AIChatOffice and add AIChatOffice TurboOne program into the trust list of your antivirus software.</div><div><i>${sdkServerPath}</i></div>`);
+    showErrorWindow("⚠️ SDK程序丢失 SDK program is missing",
+      `<div>SDK程序丢失，请重新安装 AIChatOffice。</div>
+       <div>The SDK program is not found, please reinstall AIChatOffice.</div>
+       <div><i>${sdkServerPath}</i></div>`);
     bootWindow.destroy();
     return false;
   }
 
   return true;
+}
+
+// 下载单个可执行文件的函数
+async function downloadExecutable(url, destPath, fileType) {
+  // 更新启动窗口显示下载状态
+  if (bootWindow) {
+    bootWindow.webContents.send('download-progress', {
+      status: 'start',
+      message: `开始下载${fileType === 'kernel' ? '内核' : 'SDK'}程序...`
+    });
+  }
+
+  try {
+    await downloadFile(url, destPath, (progress) => {
+      if (bootWindow) {
+        bootWindow.webContents.send('download-progress', {
+          file: fileType,
+          progress: progress,
+          status: 'downloading'
+        });
+      }
+    });
+
+    if (bootWindow) {
+      bootWindow.webContents.send('download-progress', {
+        status: 'complete',
+        message: `${fileType === 'kernel' ? '内核' : 'SDK'}程序下载完成`
+      });
+    }
+  } catch (error) {
+    writeLog(`下载失败: ${error.message}`);
+    throw error;
+  }
+}
+
+async function downloadFile(url, destPath, onProgress) {
+  // 创建临时下载路径
+  const tempPath = destPath + '.downloading';
+  try {
+    writeLog(`开始从华为云下载文件: ${url} 到临时文件 ${tempPath}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const totalSize = parseInt(response.headers.get('content-length'), 10);
+    let downloadedSize = 0;
+    // 创建写入临时文件的流
+    const fileStream = fs.createWriteStream(tempPath);
+    // 获取可读流
+    const reader = response.body.getReader();
+    // 处理数据块
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      // 写入数据到临时文件
+      fileStream.write(Buffer.from(value));
+      // 更新进度
+      downloadedSize += value.length;
+      const progress = downloadedSize / totalSize;
+      onProgress(progress);
+      writeLog(`下载进度: ${(progress * 100).toFixed(2)}%`);
+    }
+    // 关闭写入流
+    fileStream.end();
+    // 等待写入完成
+    await new Promise((resolve, reject) => {
+      fileStream.on('finish', resolve);
+      fileStream.on('error', reject);
+    });
+    writeLog('文件下载完成，准备移动到目标位置');
+    // 下载完成后，将临时文件重命名为目标文件
+    fs.renameSync(tempPath, destPath);
+    // 设置文件权限
+    fs.chmodSync(destPath, 0o755);
+    writeLog('文件下载和移动完成');
+    return true;
+  } catch (error) {
+    writeLog(`下载过程发生异常: ${error.message}`);
+    // 如果下载失败，删除临时文件
+    try {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+        writeLog(`删除未完成的临时下载文件: ${tempPath}`);
+      }
+    } catch (unlinkError) {
+      writeLog(`删除临时文件失败: ${unlinkError.message}`);
+    }
+    throw error;
+  }
 }
 
 async function startSDKServer(sdkServerPath, sdkCmds) {
@@ -637,8 +765,8 @@ const showErrorWindow = (title, content) => {
     errorHTMLPath = path.join(process.resourcesPath, "electron", "error.html");
   }
   const errWindow = new BrowserWindow({
-    width: Math.floor(screen.getPrimaryDisplay().size.width * 0.5),
-    height: Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.8),
+    width: Math.floor(screen.getPrimaryDisplay().size.width * 0.4),
+    height: Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.65),
     // frame: false,
     icon: path.join(appDir, "stage", "icon-large.png"),
     webPreferences: {
@@ -654,7 +782,6 @@ const showErrorWindow = (title, content) => {
       v: appVer,
       title: title,
       content: content,
-      icon: path.join(appDir, "stage", "icon-large.png"),
     },
   });
   errWindow.show();
@@ -822,14 +949,14 @@ storeType = "leveldb"
 path = "${path.join(confDir, "chatleveldb")}"
 
 [callback]
-configFileName = "${isDevEnv ? "./server/sdk/callback.yaml" : path.join(process.resourcesPath, "electron", "server", "sdk", "callback.yaml")}"
+configFileName = "${isDevEnv ? "./server/callback.yaml" : path.join(process.resourcesPath, "electron", "server", "callback.yaml")}"
 timeoutSec = 5
 uploadTimeoutSec = 600
 retryAttempts = 3
 retryDelaySec = 1
 
 [stream]
-apiConfigFileName = "${isDevEnv ? "./server/sdk/api.yaml" : path.join(process.resourcesPath, "electron", "server", "sdk", "api.yaml")}"
+apiConfigFileName = "${isDevEnv ? "./server/api.yaml" : path.join(process.resourcesPath, "electron", "server", "api.yaml")}"
 
 [license]
 fileSizeLimit = "1M"

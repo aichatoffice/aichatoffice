@@ -1,108 +1,153 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <title>Error - AIChatOffice</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      margin: 0;
-      background-color: #fff;
-      color: #202124;
-      font-family: "Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
+    :root {
+      --primary-color: #218bff;
+      --primary-hover: #0969da;
+      --text-color: #202124;
+      --text-secondary: #5f6368;
+      --bg-color: #fff;
+      --border-color: rgba(0, 0, 0, .06);
+      --error-color: #d23f31;
+      --code-bg: #f8f9fa;
+      --hover-bg: #f3f3f3;
     }
 
-    .fn__flex-column {
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell,
+        "Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei", sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    .container {
       display: flex;
       flex-direction: column;
       width: 100%;
+      max-width: 608px;
       margin: 0 auto;
-      border: 1px solid rgba(0, 0, 0, .06);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
       min-height: 100vh;
       box-sizing: border-box;
-      padding: 0 calc((100vw - 608px) / 2);
+      padding: 32px 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      position: relative;
     }
 
-    .fn__flex-1 {
+    .spacer {
       flex: 1;
       min-height: 16px;
-      flex-shrink: 0;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
     }
 
     h2 {
-      margin: 0 0 4px 0;
-      line-height: 24px;
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      line-height: 1.3;
       text-align: center;
+      color: var(--text-color);
     }
 
-    .svg {
+    #min {
       position: fixed;
-      right: 32px;
-      top: 0;
-      width: 13px;
-      fill: #5f6368;
-      padding: 9.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      top: 8px;
+      right: 8px;
+      border-radius: 4px;
       cursor: pointer;
-      z-index: 1;
+      transition: all 0.2s ease;
     }
 
-    .svg:hover {
-      background: #dfe0e1;
-      fill: #202124;
+    #min svg {
+      fill: var(--text-secondary);
+      transition: fill 0.2s ease;
     }
 
-    #close {
-      right: 0;
-      width: 10px;
-      padding: 11px 11px;
+    #min:hover {
+      background-color: var(--hover-bg);
     }
 
-    #close:hover {
-      background-color: #d23f31;
-      fill: #fff;
+    #min:hover svg {
+      fill: var(--text-color);
     }
 
     a {
       text-decoration: none;
-      color: #218bff;
+      color: var(--primary-color);
+      transition: color 0.2s ease;
     }
 
     a:hover {
       text-decoration: underline;
-      color: #0969da;
+      color: var(--primary-hover);
     }
 
     kbd {
-      padding: 2px 4px;
+      padding: 3px 5px;
       font: 75% Consolas, "Liberation Mono", Menlo, Courier, monospace;
       line-height: 1;
-      color: #5f6368;
+      color: var(--text-secondary);
       vertical-align: middle;
-      background-color: #f3f3f3;
-      border: solid 1px rgba(0, 0, 0, .06);
+      background-color: var(--hover-bg);
+      border: solid 1px var(--border-color);
       border-radius: 6px;
-      box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .06);
+      box-shadow: inset 0 -1px 0 var(--border-color);
     }
 
     .feedback {
       display: flex;
       justify-content: space-around;
-      font-size: 14px
+      font-size: 14px;
+      margin: 12px 0;
     }
 
     .drag {
       -webkit-app-region: drag;
-      height: 22px;
+      height: 32px;
       cursor: pointer;
       position: fixed;
       top: 0;
       left: 0;
-      right: 44px;
+      right: 40px;
+      /* Adjusted since there's only one button now */
+    }
+
+    #content {
+      background-color: var(--code-bg);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
     }
 
     #content div {
       line-height: 1.6;
-      margin-top: 0;
       margin-bottom: 16px;
     }
 
@@ -112,40 +157,73 @@
 
     #icon {
       position: fixed;
-      left: 4px;
+      left: 12px;
       top: 0;
       line-height: 32px;
-      color: #5f6368;
+      color: var(--text-secondary);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     #icon img {
-      height: 32px;
-      width: 32px;
-      vertical-align: top;
+      height: 24px;
+      width: 24px;
+      vertical-align: middle;
+    }
+
+    pre {
+      margin: 16px 0;
     }
 
     pre code {
-      background-color: #f8f9fa;
+      background-color: var(--code-bg);
       border-radius: 6px;
-      padding: 8px 16px;
+      padding: 12px 16px;
       font-size: 85%;
-      font-family: mononoki, Consolas, "Liberation Mono", Menlo, Courier, monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
-      color: #5f6368;
+      font-family: mononoki, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      color: var(--text-secondary);
       display: block;
-      margin-top: 8px;
       word-break: break-all;
       white-space: pre-wrap;
+      border: 1px solid var(--border-color);
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      fill: var(--error-color);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #58a6ff;
+        --primary-hover: #79b8ff;
+        --text-color: #e1e4e8;
+        --text-secondary: #8b949e;
+        --bg-color: #0d1117;
+        --border-color: #30363d;
+        --error-color: #f85149;
+        --code-bg: #161b22;
+        --hover-bg: #21262d;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="fn__flex-column">
-    <div class="fn__flex-1"></div>
+  <div class="container">
+    <div class="header">
+      <svg class="error-icon" viewBox="0 0 24 24">
+        <path
+          d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z" />
+      </svg>
+    </div>
     <h2 id="title"></h2>
-    <div class="fn__flex-1"></div>
     <div id="content"></div>
-    <div class="fn__flex-1"></div>
+    <div class="spacer"></div>
     <div class="feedback">
       <span><a href="https://ld246.com/article/1649901726096" target="_blank">求助反馈建议</a></span>
       <span><a href="https://b3log.org/AIChatOffice/download.html" target="_blank">下载最新版</a></span>
@@ -155,20 +233,8 @@
       <span><a href="https://b3log.org/AIChatOffice/en/download.html" target="_blank">Download the latest
           version</a></span>
     </div>
-    <div class="fn__flex-1"></div>
   </div>
-  <svg class="svg" id="min" viewBox="0 0 32 32">
-    <path
-      d="M1.333 14.667h29.333q1.333 0 1.333 1.333v0q0 1.333-1.333 1.333h-29.333q-1.333 0-1.333-1.333v0q0-1.333 1.333-1.333z">
-    </path>
-  </svg>
-  <svg class="svg" id="close" viewBox="0 0 32 32">
-    <path
-      d="M32 3.221l-12.779 12.779 12.779 12.779-3.221 3.221-12.779-12.779-12.779 12.779-3.221-3.221 12.779-12.779-12.779-12.779 3.221-3.221 12.779 12.779 12.779-12.779z">
-    </path>
-  </svg>
-  <div id="icon"></div>
-  <div class="drag"></div>
+
   <script>
     const getSearch = (key) => {
       if (window.location.search.indexOf('?') === -1) {
@@ -187,15 +253,9 @@
     }
 
     (() => {
-      document.querySelector('#icon').innerHTML = `<img src="${decodeURIComponent(getSearch('icon'))}"> AIChatOffice v${getSearch('v')}`
-
       document.getElementById('title').innerHTML = decodeURIComponent(getSearch('title'))
       document.getElementById('content').innerHTML = decodeURIComponent(getSearch('content'))
 
-      document.getElementById('close').addEventListener('click', () => {
-        const { ipcRenderer } = require('electron')
-        ipcRenderer.send("AIChatOffice-cmd", "destroy");
-      })
       document.getElementById('min').addEventListener('click', () => {
         const { ipcRenderer } = require('electron')
         ipcRenderer.send("AIChatOffice-cmd", "minimize");

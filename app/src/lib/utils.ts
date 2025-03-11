@@ -8,10 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * 时间戳转规则时间 
  * 当日：不展示日期，只展示时间
-  非当日，本年内：只展示「月+日」
-  非本年：展示「年+月+日」
-*/
-export function formatDate(timestamp: number) {
+ * 非当日，本年内：只展示「月+日」
+ * 非本年：展示「年+月+日」
+ * @param timestamp 时间戳（秒）
+ * @param lang 语言，支持 'zh' | 'en'
+ */
+export function formatDate(timestamp: number, lang: 'zh' | 'en' = 'zh') {
   if (!timestamp) { return "" }
   const now = new Date(); // 当前时间
   const targetDate = new Date(timestamp * 1000); // 转换目标时间戳为日期对象
@@ -35,19 +37,27 @@ export function formatDate(timestamp: number) {
 
   if (differenceInMinutes < 1) {
     // 时间差小于 1 分钟，显示 "刚刚"
-    formattedDate = '刚刚';
+    formattedDate = lang === 'zh' ? '刚刚' : 'just now';
   } else if (differenceInMinutes < 10) {
     // 时间差小于 10 分钟，显示 "X 分钟前"
-    formattedDate = `${differenceInMinutes}分钟前`;
+    formattedDate = lang === 'zh'
+      ? `${differenceInMinutes}分钟前`
+      : `${differenceInMinutes} minutes ago`;
   } else if (isSameDay) {
     // 当天：不展示日期，只展示时间
-    formattedDate = `今天 ${padZero(hours)}:${padZero(minutes)}`;
+    formattedDate = lang === 'zh'
+      ? `今天 ${padZero(hours)}:${padZero(minutes)}`
+      : `Today ${padZero(hours)}:${padZero(minutes)}`;
   } else if (isSameYear) {
     // 今年：展示「月+日」
-    formattedDate = `${padZero(month)}月${padZero(day)}日 ${padZero(hours)}:${padZero(minutes)}`;
+    formattedDate = lang === 'zh'
+      ? `${padZero(month)}月${padZero(day)}日 ${padZero(hours)}:${padZero(minutes)}`
+      : `${padZero(month)}/${padZero(day)} ${padZero(hours)}:${padZero(minutes)}`;
   } else {
     // 非本年：展示「年+月+日」
-    formattedDate = `${year}年${padZero(month)}月${padZero(day)}日 ${padZero(hours)}:${padZero(minutes)}`;
+    formattedDate = lang === 'zh'
+      ? `${year}年${padZero(month)}月${padZero(day)}日 ${padZero(hours)}:${padZero(minutes)}`
+      : `${year}/${padZero(month)}/${padZero(day)} ${padZero(hours)}:${padZero(minutes)}`;
   }
 
   return formattedDate;

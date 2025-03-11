@@ -145,6 +145,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       })
       return data
     } catch (error) {
+      navigate('/')
       console.error('Error fetching files:', error)
     }
   }

@@ -3,61 +3,127 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <title>AIChatOffice 启动中...</title>
   <style>
-    html {
-      overflow: hidden;
-      height: 100%;
+    body {
+      color: #000000;
+      font-family: system-ui;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
     }
 
-    body {
+    .progress-container {
+      width: 80%;
+      max-width: 400px;
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress {
+      width: 0%;
       height: 100%;
-      margin: 0;
-      background: #1e1e1e;
-      font-size: 12px;
-      font-family: "Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols";
+      background: #4CAF50;
+      transition: width 0.3s ease;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+      color: #909090;
+    }
+
+    @keyframes ellipsis {
+      0% {
+        content: "";
+      }
+
+      25% {
+        content: ".";
+      }
+
+      50% {
+        content: "..";
+      }
+
+      75% {
+        content: "...";
+      }
+    }
+
+    .loading-dots {
+      display: inline-block;
+      width: 24px;
+    }
+
+    .loading-dots::after {
+      content: "";
+      display: inline-block;
+      animation: ellipsis 2s infinite;
+    }
+
+    .title {
+      margin: 10px;
+      font-size: 22px;
+      text-align: center;
+      font-weight: 500;
+      font-family: "HarmonyOS Sans SC", "YouYuan", "Yuanti SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      ;
     }
   </style>
 </head>
 
 <body>
-  <div id="bg" style="width: 100%;display: flex;justify-content: space-around;height: 100%;">
-    <img style="height:calc(100vh - 35px);align-self: top;" src="icon.png" />
-  </div>
-  <div style="position: absolute;bottom: 0;width: 100%;">
-    <div style="position: absolute;height: 1px;background-color: #3b3e43;width: 100%;top:0"></div>
-    <div id="progress"
-      style="position: absolute;height: 1px;background-color: #d23f31;transition: width 50ms cubic-bezier(0, 0, 0.2, 1);top:0">
+  <img src="images/robot.png" width="64" height="64">
+  <div class="title">AIChatOffice 启动中<span class="loading-dots"></span></div>
+  <div class="progress-container">
+    <div class="progress-bar">
+      <div id="progress" class="progress"></div>
     </div>
-    <div id="details"
-      style="color: #9aa0a6;text-overflow: ellipsis;white-space: nowrap;overflow: hidden;padding: 8px;height: 16px;line-height: 16px;">
-    </div>
+    <div id="status" class="status"></div>
   </div>
   <script>
-    const getSearch = (key) => {
-      if (window.location.search.indexOf('?') === -1) {
-        return ''
+    // 等待 electron 对象准备就绪
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!window.electron) {
+        console.error('Electron API 未找到');
+        return;
       }
-      let value = ''
-      const data = window.location.search.split('?')[1].split('&')
-      data.find(item => {
-        const keyValue = item.split('=')
-        if (keyValue[0] === key) {
-          value = keyValue[1]
-          return true
+
+      window.electron.on('download-progress', (data) => {
+        console.log('download-progress', data);
+        const progress = document.getElementById('progress');
+        const status = document.getElementById('status');
+
+        // 确保 data.progress 是数值
+        const progressValue = parseFloat(data.progress);
+
+        if (data.status === 'start') {
+          status.textContent = data.message;
+        } else if (data.status === 'complete') {
+          progress.style.width = '100%';
+          status.textContent = data.message;
+        } else if (data.status === 'downloading') {
+          if (data.file === 'kernel') {
+            status.textContent = `下载内核程序: ${Math.round(progressValue * 100)}%`;
+          } else {
+            status.textContent = `下载SDK程序: ${Math.round(progressValue * 100)}%`;
+          }
+          progress.style.width = `${progressValue * 100}%`;
         }
-      })
-      return value
-    }
-    (async () => {
-      const v = getSearch('v')
-      document.getElementById('details').innerHTML = `
-      <div style="display: flex;align-items: center;">
-        <img src="logo.png" width="20" style="margin-right: 10px;" />
-        <span>v 1.0.0  Booting AIChatOffice...</span>
-      </div>
-      `
-    })()
+      });
+    });
   </script>
 </body>
 

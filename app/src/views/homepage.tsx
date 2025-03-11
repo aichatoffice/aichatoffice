@@ -46,42 +46,41 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="px-6 py-20 md:px-20 relative overflow-hidden">
+      <section className="px-6 py-16 md:px-20 relative">
         {/* Decorative left border */}
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-pattern-left" />
         {/* Decorative right border */}
         <div className="absolute right-0 top-0 bottom-0 w-8 bg-pattern-right" />
-
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+        <div className="max-w-4xl mx-auto text-center">
           <div className="flex justify-center items-center gap-4 mb-6">
             <div className="animate-float-slow">
-              <FileText className="h-12 w-12 text-primary animate-pulse" />
+              <FileText className="h-10 w-10 text-gray-700" />
             </div>
             <div className="animate-float-medium">
-              <FileSpreadsheet className="h-12 w-12 text-primary animate-bounce" />
+              <FileSpreadsheet className="h-10 w-10 text-gray-700" />
             </div>
             <div className="animate-float-fast">
-              <FileImage className="h-12 w-12 text-primary animate-spin-slow" />
+              <FileImage className="h-10 w-10 text-gray-700" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-primary relative">
-            <span className="animate-gradient-text">{f({ id: "homepage.title" })}</span>
+          <h1 className="text-4xl md:text-5xl font-medium tracking-tight mb-6 text-gray-800">
+            {f({ id: "homepage.title" })}
           </h1>
-          <p className="text-black text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
             {f({ id: "homepage.description" })}
           </p>
           <div className="flex justify-center items-center gap-8 mb-12">
             <div className="flex flex-col items-center">
-              <MessageSquare className="h-8 w-8 text-primary mb-2" />
-              <span className="text-sm text-gray-600">{f({ id: "homepage.chatInterface" })}</span>
+              <MessageSquare className="h-8 w-8 text-gray-700 mb-2" />
+              <span className="text-sm text-gray-600">Chat Interface</span>
             </div>
             <div className="flex flex-col items-center">
-              <Brain className="h-8 w-8 text-primary mb-2" />
-              <span className="text-sm text-gray-600">{f({ id: "homepage.aiPowered" })}</span>
+              <Brain className="h-8 w-8 text-gray-700 mb-2" />
+              <span className="text-sm text-gray-600">AI-Powered</span>
             </div>
             <div className="flex flex-col items-center">
-              <Lightbulb className="h-8 w-8 text-primary mb-2" />
-              <span className="text-sm text-gray-600">{f({ id: "homepage.smartInsights" })}</span>
+              <Lightbulb className="h-8 w-8 text-gray-700 mb-2" />
+              <span className="text-sm text-gray-600">Smart Insights</span>
             </div>
           </div>
 
@@ -96,7 +95,7 @@ export default function Home() {
             />
             <label
               htmlFor="file-upload"
-              className="block w-full aspect-[16/9] max-w-3xl mx-auto rounded-xl border-2 border-dashed border-gray-300 hover:border-primary transition-all duration-300 bg-gray-50 p-12 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/10"
+              className="block w-full aspect-[16/9] max-w-3xl mx-auto rounded-lg border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-gray-50 p-12 cursor-pointer transform hover:scale-[1.01]"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -125,12 +124,12 @@ export default function Home() {
               }}
             >
               <div className="h-full flex flex-col items-center justify-center gap-4">
-                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
-                  <Upload className="h-8 w-8 text-primary" />
+                <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                  <Upload className="h-8 w-8 text-gray-700" />
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-medium mb-2 text-black">{f({ id: "homepage.uploadFiles" })}</p>
-                  <p className="text-gray-600 flex items-center justify-center gap-2">
+                  <p className="text-lg font-medium mb-2 text-gray-700">{f({ id: "homepage.uploadFiles" })}</p>
+                  <p className="text-gray-500 flex items-center justify-center gap-2">
                     <FileType className="h-4 w-4" />
                     {f({ id: "homepage.supportedFiles" })}
                   </p>
@@ -142,7 +141,7 @@ export default function Home() {
           <div className="flex gap-4 justify-center mt-8">
             <Button
               size="lg"
-              className="bg-primary hover:bg-primary/90 transition-all duration-200 transform hover:scale-[1.02] light-spot-hover"
+              className="bg-gray-700 hover:bg-gray-800 transition-all duration-200 transform hover:scale-[1.01] text-white"
               onClick={handleGetStarted}
             >
               {f({ id: "homepage.getStarted" })}
@@ -151,7 +150,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="lg"
-              className="transition-all duration-200 transform hover:scale-[1.02] light-spot-hover"
+              className="transition-all duration-200 transform hover:scale-[1.01] text-gray-700 border-gray-300"
               onClick={handleGetStarted}
             >
               {f({ id: "homepage.viewDemo" })}
@@ -161,28 +160,28 @@ export default function Home() {
       </section>
 
       {/* Brand Wall */}
-      <section className="px-6 py-20 md:px-20 border-t border-gray-200 light-spot-hover">
+      <section className="px-6 py-16 md:px-20 border-t border-gray-100">
         <div className="text-center mb-12">
-          <p className="text-gray-600">{f({ id: "homepage.featuredOn" })}</p>
+          <p className="text-gray-500">{f({ id: "homepage.featuredOn" })}</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-center">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex justify-center transform hover:scale-105 transition-transform duration-200">
-              <div className="w-32 h-12 bg-gray-100 rounded-lg" />
+              <div className="w-32 h-12 bg-gray-50 rounded-md" />
             </div>
           ))}
         </div>
       </section>
 
       {/* Feature Lists */}
-      <section className="px-6 py-20 md:px-20 border-t border-gray-200">
-        <h2 className="text-3xl font-bold text-center mb-16 text-primary">{f({ id: "homepage.powerfulFeatures" })}</h2>
+      <section className="px-6 py-16 md:px-20 border-t border-gray-100">
+        <h2 className="text-3xl font-medium text-center mb-16 text-gray-800">Powerful Features for Your Workflow</h2>
 
         {/* Feature 1 */}
         <div className="grid lg:grid-cols-2 gap-12 mb-20 items-center">
           <div className="order-2 lg:order-1">
-            <h3 className="text-2xl font-bold mb-4 text-black flex items-center gap-2">
-              <Zap className="h-6 w-6 text-primary" />
+            <h3 className="text-2xl font-medium mb-4 text-gray-800 flex items-center gap-2">
+              <Zap className="h-6 w-6 text-gray-700" />
               {f({ id: "homepage.documentPreview" })}
             </h3>
             <p className="text-gray-600 mb-6">
@@ -191,7 +190,7 @@ export default function Home() {
             <ul className="space-y-3">
               {[f({ id: "homepage.multiFormatSupport" }), f({ id: "homepage.intuitiveInterface" }), f({ id: "homepage.fullTextSearch" })].map((feature, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-gray-700" />
                   <span className="text-gray-700">{feature}</span>
                 </li>
               ))}
@@ -203,7 +202,7 @@ export default function Home() {
               alt="Smart Document Processing"
               width={500}
               height={300}
-              className="rounded-lg border border-gray-200"
+              className="rounded-lg border border-gray-100"
             />
           </div>
         </div>
@@ -216,12 +215,12 @@ export default function Home() {
               alt="Real-time Collaboration"
               width={500}
               height={300}
-              className="rounded-lg border border-gray-200"
+              className="rounded-lg border border-gray-100"
             />
           </div>
           <div>
-            <h3 className="text-2xl font-bold mb-4 text-black flex items-center gap-2">
-              <Users className="h-6 w-6 text-primary" />
+            <h3 className="text-2xl font-medium mb-4 text-gray-800 flex items-center gap-2">
+              <Users className="h-6 w-6 text-gray-700" />
               {f({ id: "homepage.aiPoweredConversation" })}
             </h3>
             <p className="text-gray-600 mb-6">
@@ -230,7 +229,7 @@ export default function Home() {
             <ul className="space-y-3">
               {[f({ id: "homepage.naturalLanguageProcessing" }), f({ id: "homepage.contextUnderstanding" }), f({ id: "homepage.multiTurnDialogue" })].map((feature, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-gray-700" />
                   <span className="text-gray-700">{feature}</span>
                 </li>
               ))}
@@ -241,8 +240,8 @@ export default function Home() {
         {/* Feature 3 */}
         <div className="grid lg:grid-cols-2 gap-12 mb-20 items-center">
           <div className="order-2 lg:order-1">
-            <h3 className="text-2xl font-bold mb-4 text-black flex items-center gap-2">
-              <Shield className="h-6 w-6 text-primary" />
+            <h3 className="text-2xl font-medium mb-4 text-gray-800 flex items-center gap-2">
+              <Shield className="h-6 w-6 text-gray-700" />
               {f({ id: "homepage.multiFormatSupport" })}
             </h3>
             <p className="text-gray-600 mb-6">
@@ -251,7 +250,7 @@ export default function Home() {
             <ul className="space-y-3">
               {[f({ id: "homepage.wideCompatibility" }), f({ id: "homepage.seamlessConversion" }), f({ id: "homepage.formatRetention" })].map((feature, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-gray-700" />
                   <span className="text-gray-700">{feature}</span>
                 </li>
               ))}
@@ -263,7 +262,7 @@ export default function Home() {
               alt="Advanced Security"
               width={500}
               height={300}
-              className="rounded-lg border border-gray-200"
+              className="rounded-lg border border-gray-100"
             />
           </div>
         </div>
@@ -276,12 +275,12 @@ export default function Home() {
               alt="Workflow Automation"
               width={500}
               height={300}
-              className="rounded-lg border border-gray-200"
+              className="rounded-lg border border-gray-100"
             />
           </div>
           <div>
-            <h3 className="text-2xl font-bold mb-4 text-black flex items-center gap-2">
-              <Cog className="h-6 w-6 text-primary" />
+            <h3 className="text-2xl font-medium mb-4 text-gray-800 flex items-center gap-2">
+              <Cog className="h-6 w-6 text-gray-700" />
               {f({ id: "homepage.seamlessWorkflow" })}
             </h3>
             <p className="text-gray-600 mb-6">
@@ -290,7 +289,7 @@ export default function Home() {
             <ul className="space-y-3">
               {[f({ id: "homepage.integratedExperience" }), f({ id: "homepage.quickNavigation" }), f({ id: "homepage.autoSave" })].map((feature, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-gray-700" />
                   <span className="text-gray-700">{feature}</span>
                 </li>
               ))}
@@ -300,28 +299,28 @@ export default function Home() {
       </section>
 
       {/* Highlights */}
-      <section className="px-6 py-20 md:px-20 border-t border-gray-200">
-        <h2 className="text-3xl font-bold text-center mb-16 text-primary drop-shadow-[0_0_25px_rgba(51,121,239,0.5)]">
+      <section className="px-6 py-16 md:px-20 border-t border-gray-100">
+        <h2 className="text-3xl font-medium text-center mb-16 text-gray-800">
           {f({ id: "homepage.highlights" })}
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <HighlightCard
-            icon={<Layers className="h-8 w-8 text-primary" />}
+            icon={<Layers className="h-8 w-8 text-gray-700" />}
             title={f({ id: "homepage.intuitiveAIIntegration" })}
             description={f({ id: "homepage.intuitiveAIIntegrationDescription" })}
           />
           <HighlightCard
-            icon={<FileSearch className="h-8 w-8 text-primary" />}
+            icon={<FileSearch className="h-8 w-8 text-gray-700" />}
             title={f({ id: "homepage.efficientContentExtraction" })}
             description={f({ id: "homepage.efficientContentExtractionDescription" })}
           />
           <HighlightCard
-            icon={<Zap className="h-8 w-8 text-primary" />}
+            icon={<Zap className="h-8 w-8 text-gray-700" />}
             title={f({ id: "homepage.fastResponse" })}
             description={f({ id: "homepage.fastResponseDescription" })}
           />
           <HighlightCard
-            icon={<Clock className="h-8 w-8 text-primary" />}
+            icon={<Clock className="h-8 w-8 text-gray-700" />}
             title={f({ id: "homepage.easeOfUse" })}
             description={f({ id: "homepage.easeOfUseDescription" })}
           />
@@ -329,22 +328,22 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-20 md:px-20 border-t border-gray-200">
+      <footer className="px-6 py-16 md:px-20 border-t border-gray-100">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-bold mb-4 text-black flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <h3 className="font-medium mb-4 text-gray-800 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-gray-700" />
               AIChatOffice
             </h3>
-            <p className="text-gray-600 text-sm">{f({ id: "homepage.transformYourDocumentManagementExperience" })}</p>
+            <p className="text-gray-500 text-sm">{f({ id: "homepage.transformYourDocumentManagementExperience" })}</p>
           </div>
           {[f({ id: "homepage.product" }), f({ id: "homepage.company" }), f({ id: "homepage.resources" })].map((section) => (
             <div key={section}>
-              <h3 className="font-bold mb-4 text-black">{section}</h3>
+              <h3 className="font-medium mb-4 text-gray-800">{section}</h3>
               <ul className="space-y-2">
                 {[1, 2, 3, 4].map((item) => (
                   <li key={item}>
-                    <Link to="#" className="text-gray-600 hover:text-primary text-sm">
+                    <Link to="#" className="text-gray-500 hover:text-gray-700 text-sm transition-colors">
                       Link {item}
                     </Link>
                   </li>
@@ -368,10 +367,10 @@ function HighlightCard({
   description: string
 }) {
   return (
-    <div className="p-6 rounded-lg bg-white border border-gray-200 transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:shadow-primary/10 hover:border-primary/50 group light-spot-hover">
+    <div className="p-6 rounded-lg bg-white border border-gray-100 transition-all duration-300 hover:scale-[1.01] hover:shadow-md group">
       <div className="mb-4 flex justify-center">{icon}</div>
-      <h3 className="font-bold mb-2 text-primary text-center">{title}</h3>
-      <p className="text-gray-600 text-sm text-center">{description}</p>
+      <h3 className="font-medium mb-2 text-gray-800 text-center">{title}</h3>
+      <p className="text-gray-500 text-sm text-center">{description}</p>
     </div>
   )
 }

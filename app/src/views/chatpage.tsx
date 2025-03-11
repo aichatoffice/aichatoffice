@@ -9,6 +9,7 @@ import { useFiles } from "@/providers/FileContext"
 import { useToast } from "@/components/ui/use-toast"// ... existing code ...
 import * as pdfjsLib from 'pdfjs-dist'
 import { PDFDocumentProxy } from 'pdfjs-dist'
+import Robot from "@/assets/robot.png"
 
 const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
 
@@ -23,30 +24,12 @@ interface Message {
 export default function DocumentChat() {
   const { formatMessage: f } = useIntl()
   const { id: documentId = "" } = useParams()
-  const [isChatOpen, setIsChatOpen] = useState(true)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
   const { getPreviewUrl, createFileChat, sendFileChatMessage, breakFileChat, getFileById } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const defaultMessages = [
-    {
-      id: Date.now(),
-      role: "assistant",
-      content:
-        f({ id: "chat.greeting.1" }) +
-        "\n\n" +
-        f({ id: "chat.greeting.2" }) +
-        "\n\n" +
-        f({ id: "chat.greeting.3" }) +
-        "\n\n" +
-        f({ id: "chat.greeting.4" }) +
-        "\n\n" +
-        f({ id: "chat.greeting.5" }) +
-        "\n\n" +
-        f({ id: "chat.greeting.6" }),
-    },
-  ]
-  const [messages, setMessages] = useState<Message[]>(defaultMessages)
+  const [messages, setMessages] = useState<Message[]>([])
   const [message, setMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isSending, setIsSending] = useState(false)
@@ -67,7 +50,7 @@ export default function DocumentChat() {
     // 添加状态避免初始化时创建两次聊天
     let isSubscribed = true;
     async function initChat() {
-      setMessages(defaultMessages)
+      setMessages([])
       setPreviewUrl("")
       setPdfData(null)
       if (!documentId) return;
@@ -373,18 +356,21 @@ export default function DocumentChat() {
 
         {/* Right Chat Panel*/}
         <div
-          className={`${isChatOpen ? "w-[300px] md:w-[400px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full`}
+          className={`${isChatOpen ? "w-[300px] md:w-[400px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
         >
           <Button
             variant="ghost"
             size="icon"
-            className="absolute -left-12 top-2 bg-black/20 hover:bg-black/40 hover:text-white"
+            className="absolute -left-18 top-6 bg-black/5 rounded-full hover:bg-black/10 hover:text-white 
+            before:content-[''] before:absolute before:top-0 before:left-[-100%] before:w-full before:h-full 
+            before:bg-gradient-to-r before:from-transparent before:via-[#677894]/30 before:to-transparent 
+            hover:before:left-[100%] before:transition-all before:duration-500 overflow-hidden"
             onClick={() => setIsChatOpen(!isChatOpen)}
           >
-            <ChevronRight className={`h-4 w-4 transition-transform ${isChatOpen ? "rotate-180" : ""}`} />
+            <img src={Robot} alt="robot" className={`w-7 h-7 transition-transform  ${isChatOpen ? "rotate-360" : ""}`} />
           </Button>
           <div className={`${isChatOpen ? "opacity-100" : "opacity-0"} transition-opacity flex-1 p-4 overflow-auto`}>
-            {messages.length === 1 ? (
+            {messages.length === 0 ? (
               <div className="space-y-4 text-sm">
                 <div className="flex gap-3">
                   <img
@@ -410,8 +396,8 @@ export default function DocumentChat() {
                   onClick={() => handleSendMessage(f({ id: "chat.summary" }))}
                   className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
                 >
-                  <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-5 h-5 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3 h-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                     </svg>
                   </div>
@@ -433,14 +419,14 @@ export default function DocumentChat() {
                     )}
                     <div className={`space-y-1 ${message.role === "user" ? "items-end" : ""} max-w-[calc(100%-40px)]`}>
                       <div
-                        className={`rounded-lg p-3 max-w-full ${message.role === "user"
-                          ? "bg-blue-600 text-white"
+                        className={`rounded-2xl p-3 max-w-full ${message.role === "user"
+                          ? "bg-[#364153] text-white overflow-hidden"
                           : message.content === f({ id: "chat.retry" })
                             ? "bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]"
                             : "bg-gray-100"
                           }`}
                       >
-                        <div className="whitespace-pre-line text-sm max-w-full">
+                        <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
                           {(isLoading && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
                             <div className="flex gap-1">
                               <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
@@ -519,11 +505,12 @@ export default function DocumentChat() {
                       handleSendMessage(message)
                     }
                   }}
+                  className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <Button
                   onClick={isSending ? handleBreakChat : () => handleSendMessage(message)}
                   size="icon"
-                  className={`${isSending ? 'bg-[#f93a37]' : 'bg-blue-500'} text-white`}
+                  className={`rounded-xl ${isSending ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
                   disabled={!isSending && message.length === 0}
                 >
                   {isSending ? (
