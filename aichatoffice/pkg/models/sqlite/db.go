@@ -33,9 +33,9 @@ func (s *SqliteStore) AutoMigrate() error {
 	if err != nil {
 		return err
 	}
-	err = s.DB.AutoMigrate(&dto.ChatConversation{})
-	if err != nil {
-		return err
-	}
+	// err = s.DB.AutoMigrate(&dto.ChatConversation{})
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 }

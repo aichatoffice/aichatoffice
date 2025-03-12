@@ -8,16 +8,17 @@ import (
 	"github.com/gotomicro/ego/server/egin"
 
 	"aichatoffice/pkg/models/leveldbstore"
+	sqlitestore "aichatoffice/pkg/models/sqlite"
 	"aichatoffice/pkg/models/store"
-	"aichatoffice/pkg/services"
 	aisvc "aichatoffice/pkg/services/ai"
 	chatsvc "aichatoffice/pkg/services/chat"
+	filesvc "aichatoffice/pkg/services/file"
 	"aichatoffice/ui"
 )
 
 var (
 	Gin         *egin.Component
-	FileService *services.FileService
+	FileService *filesvc.FileService
 	ChatService *chatsvc.ChatSvc
 
 	// store
@@ -32,6 +33,7 @@ func Init() (err error) {
 		return fmt.Errorf("service init store failed: %w", err)
 	}
 
+	FileService = filesvc.NewFileService(FileStore)
 	aiSvc := aisvc.NewAiWrapper()
 	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc)
 	return nil
@@ -53,6 +55,14 @@ func initStore() (err error) {
 			}
 			ChatStore.RunDeleteExpireKeysCronjob(interval)
 		}
+	case "sqlite":
+		sqlite, err := sqlitestore.NewSqliteStore()
+		if err != nil {
+			return fmt.Errorf("service init sqlite failed: %w", err)
+		}
+		FileStore = sqlite
+	default:
+		panic(fmt.Sprintf("store type %s not supported", econf.GetString("store.type")))
 	}
 	return nil
 }

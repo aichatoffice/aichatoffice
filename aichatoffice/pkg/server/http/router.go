@@ -7,6 +7,7 @@ import (
 	"aichatoffice/pkg/server/http/api"
 	"aichatoffice/pkg/server/http/callback"
 	"aichatoffice/pkg/server/http/middlewares"
+	aiv2svc "aichatoffice/pkg/services/aiv2"
 	"aichatoffice/ui"
 )
 
@@ -49,7 +50,12 @@ func ServeHTTP() *egin.Component {
 		chatRouters.GET("/:conversation_id", api.GetConversation)
 		chatRouters.DELETE("/:conversation_id", api.DeleteConversation)
 		chatRouters.POST("/:conversation_id/break", api.BreakConversation)
-		chatRouters.POST("/:conversation_id/chat", api.Chat) //todo summarize 是一种特殊的 chat
+		chatRouters.POST("/:conversation_id/chat", api.Chat) // todo summarize 是一种特殊的 chat
+	}
+
+	chatV2Routers := apiGroup.Group("/chat/v2")
+	{
+		chatV2Routers.POST("/completions", aiv2svc.Completions)
 	}
 
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))

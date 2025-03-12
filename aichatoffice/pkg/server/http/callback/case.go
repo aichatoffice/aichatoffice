@@ -28,6 +28,17 @@ func Verify(c *gin.Context) {
 	})
 }
 
+type FileResponse struct {
+	ID         string `json:"id"`
+	Size       int64  `json:"size"`
+	Version    int64  `json:"version"`
+	ModifierID string `json:"modifierId"`
+	ModifyTime int    `json:"modifyTime"`
+	CreateTime int64  `json:"createTime"`
+	CreatorID  string `json:"creatorId"`
+	Name       string `json:"name"`
+}
+
 func GetFile(c *gin.Context) {
 	fileId := c.Param("fileId")
 	file, err := invoker.FileStore.GetFile(c, fileId)
@@ -38,9 +49,19 @@ func GetFile(c *gin.Context) {
 		})
 		return
 	}
+
+	response := FileResponse{
+		ID:         file.FileID,
+		Size:       file.Size,
+		Version:    file.Version,
+		CreateTime: file.CreateTime,
+		CreatorID:  file.CreatorId,
+		Name:       file.Name,
+	}
+
 	c.JSON(200, gin.H{
 		"code": 0,
-		"data": file,
+		"data": response,
 	})
 }
 
@@ -129,9 +150,19 @@ func UploadFile(c *gin.Context) {
 func UploadComplete(c *gin.Context) {
 	fileId := c.Param("fileId")
 	file, _ := invoker.FileService.GetFile(c, fileId)
+
+	response := FileResponse{
+		ID:         file.FileID,
+		Size:       file.Size,
+		Version:    file.Version,
+		CreateTime: file.CreateTime,
+		CreatorID:  file.CreatorId,
+		Name:       file.Name,
+	}
+
 	c.JSON(200, gin.H{
 		"code": 0,
-		"data": file,
+		"data": response,
 	})
 }
 

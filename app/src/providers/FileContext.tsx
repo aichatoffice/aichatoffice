@@ -5,6 +5,7 @@ import { isElectron, getIpcRenderer } from '../utils/electron'
 
 interface FileItem {
   id: number
+  file_id: string
   name: string
   type: string
   content: string
@@ -172,7 +173,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         method: 'DELETE',
         path: `/showcase/file/${id}`
       })
-      setFiles(files.filter((file) => file.id !== id))
+      setFiles(files.filter((file) => file.file_id !== id))
       navigate('/')
     } catch (error) {
       console.error('Error deleting file:', error)

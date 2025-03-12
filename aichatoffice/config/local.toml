@@ -4,16 +4,20 @@ enableAccessInterceptorRes = true
 port = 9001
 
 [store]
-type = "leveldb"
+type = "sqlite"
 enableExpireJob = true
 expireJobInterval = "5s"
 
 [leveldb]
 path = "~/workspace/public/aichatoffice/aichatoffice/leveldb"
 
+[sqlite]
+path = "~/workspace/public/aichatoffice/aichatoffice/sqlite"
+
+
 [host]
-downloadUrlPrefix = "http://172.16.21.165:9301"  # aichatoffice 客户服务地址
-previewUrlPrefix = "http://172.16.21.165:9001"  # turboone 极速版sdk服务地址
+downloadUrlPrefix = "http://127.0.0.1:9001"
+previewUrlPrefix = "http://127.0.0.1:9101"
 
 [case]
 resourcePath = "./resource"
@@ -26,12 +30,20 @@ timeout = 300
 convertedTextDir = "converted"
 
 [openai]
-configMode = "remote"                                         # local 本地配置，remote 远程回调配置
-baseUrl = "https://api.siliconflow.cn/v1"
-textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
-token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
+[openai.llm]
+configMode = "remote" # local 本地配置，remote 远程回调配置
+# baseUrl = "https://api.siliconflow.cn/v1"
+# textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+# token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
+# baseUrl = "https://api.deepseek.com/v1"
+# textModel = "deepseek-chat"
+# token = "sk-a35b80c0627c49f49bbbaf9a1e3e70e2"
+baseUrl = "https://xiaoai.plus/v1"
+# textModel = "gpt-4-32k"
+textModel = "deepseek-v3"
+token = "sk-an0ttsr7hLww289uEaK819A57MnUkflvFXeBAvjUhHc0Pxwq"
 name = ""
 proxyUrl = ""
 subservice = ""
-inputMaxToken = 1000
-outputMaxToken = 10000
+inputMaxToken = 10000
+outputMaxToken = 100000

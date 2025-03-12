@@ -19,6 +19,8 @@ import (
 )
 
 func NewConversation(c *gin.Context) {
+	c.JSON(204, nil)
+	return
 	userId, ok := getUserId(c)
 	if !ok || userId == "" {
 		elog.Error("no userid")
@@ -109,6 +111,8 @@ func BreakConversation(c *gin.Context) {
 }
 
 func Chat(c *gin.Context) {
+	c.JSON(204, nil)
+	return
 	req := dto.ChatRequest{}
 	err := c.ShouldBind(&req)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/syndtr/goleveldb/leveldb"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"aichatoffice/pkg/models/dto"
@@ -13,7 +13,7 @@ import (
 func (s *SqliteStore) GetFile(ctx context.Context, fileID string) (file dto.File, err error) {
 	err = s.DB.Where("file_id = ?", fileID).First(&file).Error
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.File{}, errors.New("record not found")
 		}
 		return dto.File{}, err
