@@ -63,7 +63,7 @@ export default function Home() {
               <FileImage className="h-10 w-10 text-gray-700" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-medium tracking-tight mb-6 text-gray-800">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-gray-800">
             {f({ id: "homepage.title" })}
           </h1>
           <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
@@ -72,15 +72,15 @@ export default function Home() {
           <div className="flex justify-center items-center gap-8 mb-12">
             <div className="flex flex-col items-center">
               <MessageSquare className="h-8 w-8 text-gray-700 mb-2" />
-              <span className="text-sm text-gray-600">Chat Interface</span>
+              <span className="text-sm text-gray-600">{f({ id: "homepage.chatInterface" })}</span>
             </div>
             <div className="flex flex-col items-center">
               <Brain className="h-8 w-8 text-gray-700 mb-2" />
-              <span className="text-sm text-gray-600">AI-Powered</span>
+              <span className="text-sm text-gray-600">{f({ id: "homepage.aiPowered" })}</span>
             </div>
             <div className="flex flex-col items-center">
               <Lightbulb className="h-8 w-8 text-gray-700 mb-2" />
-              <span className="text-sm text-gray-600">Smart Insights</span>
+              <span className="text-sm text-gray-600">{f({ id: "homepage.smartInsights" })}</span>
             </div>
           </div>
 
@@ -95,7 +95,7 @@ export default function Home() {
             />
             <label
               htmlFor="file-upload"
-              className="block w-full aspect-[16/9] max-w-3xl mx-auto rounded-lg border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-gray-50 p-12 cursor-pointer transform hover:scale-[1.01]"
+              className="block w-full aspect-[16/9] max-w-4xl mx-auto rounded-3xl border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-gray-50 p-12 cursor-pointer transform hover:scale-[1.01]"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -175,7 +175,7 @@ export default function Home() {
 
       {/* Feature Lists */}
       <section className="px-6 py-16 md:px-20 border-t border-gray-100">
-        <h2 className="text-3xl font-medium text-center mb-16 text-gray-800">Powerful Features for Your Workflow</h2>
+        <h2 className="text-3xl font-medium text-center mb-16 text-gray-800">{f({ id: "homepage.powerfulFeatures" })}</h2>
 
         {/* Feature 1 */}
         <div className="grid lg:grid-cols-2 gap-12 mb-20 items-center">

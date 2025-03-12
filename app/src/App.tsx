@@ -8,6 +8,9 @@ import zh from './locales/zh-CN'
 import en from './locales/en-Us'
 import './App.css'
 import { useState } from 'react'
+import "@fontsource/open-sans/400.css"; // Specify weight
+import "@fontsource/open-sans/400-italic.css";
+
 
 const messages: Record<string, any> = {
   'zh-CN': zh,

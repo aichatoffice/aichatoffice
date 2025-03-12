@@ -324,8 +324,7 @@ async function runServer() {
     const { serverPath, sdkServerPath } = getServerPaths();
 
     // 检查服务程序是否存在
-    if (!await checkServerExecutables(serverPath, sdkServerPath)) {
-      // if (!isDevEnv && !checkServerExecutables(serverPath, sdkServerPath)) {
+    if (!isDevEnv && !await checkServerExecutables(serverPath, sdkServerPath)) {
       return false;
     }
 
@@ -348,17 +347,17 @@ async function runServer() {
     writeLog(`booting sdk [${sdkServerPath} ${sdkCmds.join(" ")}]`);
 
     // 启动服务
-    // if (!isDevEnv || workspaces.length > 0) {
-    // 启动主服务
-    if (!await startKernelServer(serverPath, cmds)) {
-      return false;
+    if (!isDevEnv || workspaces.length > 0) {
+      // 启动主服务
+      if (!await startKernelServer(serverPath, cmds)) {
+        return false;
+      }
+      // await sleep(2000);
+      // 启动 SDK 服务
+      if (!await startSDKServer(sdkServerPath, sdkCmds)) {
+        return false;
+      }
     }
-    // await sleep(2000);
-    // 启动 SDK 服务
-    if (!await startSDKServer(sdkServerPath, sdkCmds)) {
-      return false;
-    }
-    // }
 
     return true;
   } catch (error) {
@@ -489,9 +488,25 @@ async function downloadExecutable(url, destPath, fileType) {
 }
 
 async function downloadFile(url, destPath, onProgress) {
-  // 创建临时下载路径
-  const tempPath = destPath + '.downloading';
+  // 创建临时下载目录
+  const tempDir = path.join(confDir, 'temp');
+  const tempFileName = `download_${Date.now()}.tmp`;
+  const tempPath = path.join(tempDir, tempFileName);
+
   try {
+    // 确保临时目录存在
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+      writeLog(`创建临时目录: ${tempDir}`);
+    }
+
+    // 确保目标目录存在
+    const targetDir = path.dirname(destPath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true, mode: 0o755 });
+      writeLog(`创建目标目录: ${targetDir}`);
+    }
+
     writeLog(`开始从华为云下载文件: ${url} 到临时文件 ${tempPath}`);
     const response = await fetch(url);
     if (!response.ok) {
@@ -525,19 +540,27 @@ async function downloadFile(url, destPath, onProgress) {
       fileStream.on('error', reject);
     });
     writeLog('文件下载完成，准备移动到目标位置');
-    // 下载完成后，将临时文件重命名为目标文件
+    // 下载完成后，将临时文件移动到目标位置
     fs.renameSync(tempPath, destPath);
     // 设置文件权限
     fs.chmodSync(destPath, 0o755);
     writeLog('文件下载和移动完成');
+    // 清理临时文件（如果移动失败）
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
     return true;
   } catch (error) {
     writeLog(`下载过程发生异常: ${error.message}`);
-    // 如果下载失败，删除临时文件
+    // 如果下载失败，清理临时文件
     try {
       if (fs.existsSync(tempPath)) {
         fs.unlinkSync(tempPath);
-        writeLog(`删除未完成的临时下载文件: ${tempPath}`);
+        writeLog(`删除未完成的临时文件: ${tempPath}`);
+      }
+      if (fs.existsSync(destPath)) {
+        fs.unlinkSync(destPath);
+        writeLog(`删除未完成的下载文件: ${destPath}`);
       }
     } catch (unlinkError) {
       writeLog(`删除临时文件失败: ${unlinkError.message}`);
@@ -611,8 +634,8 @@ const initMainWindow = () => {
   let defaultHeight;
   let workArea;
   try {
-    defaultWidth = Math.floor(screen.getPrimaryDisplay().size.width * 0.8);
-    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.9);
+    defaultWidth = Math.floor(screen.getPrimaryDisplay().size.width * 0.85);
+    defaultHeight = Math.floor(screen.getPrimaryDisplay().workAreaSize.height * 0.92);
     workArea = screen.getPrimaryDisplay().workArea;
   } catch (e) {
     console.error(e);
@@ -659,8 +682,8 @@ const initMainWindow = () => {
     show: false,
     width: windowState.width,
     height: windowState.height,
-    minWidth: 493,
-    minHeight: 376,
+    minWidth: windowState.width / 1.5,
+    minHeight: windowState.width / 2,
     fullscreenable: true,
     fullscreen: windowState.fullscreen,
     trafficLightPosition: { x: 8, y: 8 },
@@ -674,7 +697,7 @@ const initMainWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       additionalArguments: [`--js-flags=--max-old-space-size=8192`],
     },
-    icon: path.join(appDir, "stage", "icon-large.png"),
+    icon: path.join(appDir, "public", "avatar.png"),
   });
   remote.enable(mainWindow.webContents);
   if (resetToCenter) {

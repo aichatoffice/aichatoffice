@@ -41,6 +41,7 @@ export default function DocumentChat() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
+  const [showHint, setShowHint] = useState(true)
 
   useEffect(() => {
     scrollToBottom()
@@ -314,11 +315,43 @@ export default function DocumentChat() {
     await renderPage(newPage, pdfDoc)
   }
 
+  // 添加自动隐藏效果
+  useEffect(() => {
+    if (showHint) {
+      const timer = setTimeout(() => {
+        setShowHint(false)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showHint])
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* 添加提示组件 */}
+          {showHint && !isChatOpen && (
+            <div
+              className="absolute right-20 top-7 bg-white shadow-lg rounded-lg p-3 z-10 animate-bounce
+              transition-opacity duration-500 ease-in-out opacity-100"
+              onClick={() => setShowHint(false)}
+              style={{
+                animation: 'bounce 1s infinite, fadeOut 0.5s ease-in-out 4.5s forwards'
+              }}
+            >
+              <style>{`
+                @keyframes fadeOut {
+                  from { opacity: 1; }
+                  to { opacity: 0; }
+                }
+              `}</style>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                {f({ id: "chat.hint" })}
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
+              </div>
+            </div>
+          )}
           {/* {previewUrl} */}
           {previewUrl ? (
             <iframe src={previewUrl} className="w-full h-full" />
@@ -365,7 +398,10 @@ export default function DocumentChat() {
             before:content-[''] before:absolute before:top-0 before:left-[-100%] before:w-full before:h-full 
             before:bg-gradient-to-r before:from-transparent before:via-[#677894]/30 before:to-transparent 
             hover:before:left-[100%] before:transition-all before:duration-500 overflow-hidden"
-            onClick={() => setIsChatOpen(!isChatOpen)}
+            onClick={() => {
+              setIsChatOpen(!isChatOpen)
+              setShowHint(false) // 点击时关闭提示
+            }}
           >
             <img src={Robot} alt="robot" className={`w-7 h-7 transition-transform  ${isChatOpen ? "rotate-360" : ""}`} />
           </Button>
