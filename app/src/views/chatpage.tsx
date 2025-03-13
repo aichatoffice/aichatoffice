@@ -33,7 +33,8 @@ export default function DocumentChat() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
   const [showHint, setShowHint] = useState(true)
 
-  const { messages, input, handleInputChange, handleSubmit, stop, status, error, reload } = useChat({
+  const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, error, reload } = useChat({
+    initialInput: f({ id: "chat.summary" }),
     api: `/api/chat/${conversationId}/chat`,
     onResponse: (response) => {
       if (response.status === 500) {
@@ -271,11 +272,11 @@ export default function DocumentChat() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    handleInputChange({ target: { value: f({ id: "chat.summary" }) } } as any)
+                  onClick={async () => {
+                    await setInput(f({ id: "chat.summary" }));
                     setTimeout(() => {
-                      handleSubmit(new Event('submit'))
-                    }, 100)
+                      handleSubmit(new Event('submit'));
+                    }, 0)
                   }}
                   className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
                 >
@@ -289,99 +290,91 @@ export default function DocumentChat() {
               </div>
             ) : (
               <div className="space-y-6">
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                    {message.role === "assistant" && (
-                      <img
-                        src={avatar || "/placeholder.svg"}
-                        alt="Chat Icon"
-                        width={28}
-                        height={28}
-                        className="object-cover flex-shrink-0 self-start"
-                      />
-                    )}
-                    <div className={`space-y-1 ${message.role === "user" ? "items-end" : ""} max-w-[calc(100%-40px)]`}>
-                      <div
-                        className={`rounded-2xl p-3 max-w-full ${message.role === "user"
-                          ? "bg-[#364153] text-white overflow-hidden"
-                          : message.content === f({ id: "chat.retry" })
-                            ? "bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]"
+                {messages.map((message, index) => (
+                  <div key={message.id}>
+                    <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                      {message.role === "assistant" && (
+                        <img
+                          src={avatar || "/placeholder.svg"}
+                          alt="Chat Icon"
+                          width={28}
+                          height={28}
+                          className="object-cover flex-shrink-0 self-start"
+                        />
+                      )}
+                      <div className={`space-y-1 ${message.role === "user" ? "items-end" : ""} max-w-[calc(100%-40px)]`}>
+                        <div
+                          className={`rounded-2xl p-3 max-w-full ${message.role === "user"
+                            ? "bg-[#364153] text-white overflow-hidden"
                             : "bg-gray-100"
-                          }`}
-                      >
-                        <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
-                          {(status == "submitted" && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
-                            <div className="flex gap-1">
-                              <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
-                              <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                              <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                            }`}
+                        >
+                          <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
+                            {(status == "submitted" && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
+                              <div className="flex gap-1">
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="break-words max-w-full"
+                                  dangerouslySetInnerHTML={{
+                                    __html: message.content || ""
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {message.role === "assistant" && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <button className="p-1 hover:bg-gray-100 rounded">
+                              <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 在每条助手消息后检查是否需要显示错误 */}
+                    {error && message.role === "user" && (
+                      <div className="flex gap-3 mt-2">
+                        <div className="flex items-center max-w-full">
+                          <img
+                            src={avatar || "/placeholder.svg"}
+                            alt="Chat Icon"
+                            width={28}
+                            height={28}
+                            className="object-cover flex-shrink-0 self-start"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
+                              <Info className="w-4 h-4 text-[#f93a37]" />
+                              {f({ id: "chat.error" })}
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              {message.content === f({ id: "chat.retry" }) && (
-                                <Info className="w-4 h-4 text-[#f93a37]" />
-                              )}
-                              <div
-                                className="break-words max-w-full"
-                                dangerouslySetInnerHTML={{
-                                  __html: message.content || ""
-                                }}
-                              />
+                            <div className="flex items-center gap-1 ml-3">
+                              <button className="p-1 hover:bg-gray-100 rounded">
+                                <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
+                              </button>
+                              {
+                                index === messages.length - 1 && (
+                                  <button
+                                    onClick={() => reload()}
+                                    className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm"
+                                  >
+                                    <RefreshCcw className="w-4 h-4" />
+                                  </button>
+                                )
+                              }
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
-                      {message.role === "assistant" && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <button className="p-1 hover:bg-gray-100 rounded">
-                            <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
-                          </button>
-                          {(message.content === f({ id: "chat.retry" }) &&
-                            message.id === messages[messages.length - 1].id) && (
-                              <button
-                                onClick={() => {
-                                  // 找到上一条用户消息
-                                  const prevUserMessage = messages
-                                    .slice(0, messages.findIndex(m => m.id === message.id))
-                                    .reverse()
-                                    .find(m => m.role === "user");
-                                  if (prevUserMessage) {
-                                    // handleRetry(prevUserMessage.content);
-                                  }
-                                }}
-                                className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm "
-                              >
-                                <RefreshCcw className="w-4 h-4" />
-                              </button>
-                            )}
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 ))}
-                {error && (
-                  <div className="flex gap-3">
-                    <div className="flex items-center  max-w-full">
-                      <img
-                        src={avatar || "/placeholder.svg"}
-                        alt="Chat Icon"
-                        width={28}
-                        height={28}
-                        className="object-cover flex-shrink-0 self-start"
-                      />
-                      <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
-                        <Info className="w-4 h-4 text-[#f93a37]" />
-                        {f({ id: "chat.error" })}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => reload()}
-                      className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm "
-                    >
-                      <RefreshCcw className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -394,7 +387,9 @@ export default function DocumentChat() {
                   placeholder={f({ id: "chat.placeholder" })}
                   name="prompt"
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    handleInputChange(e);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
