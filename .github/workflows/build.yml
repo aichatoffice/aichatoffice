@@ -8,10 +8,56 @@ on:
   # 允许手动触发工作流
   workflow_dispatch:
 
+env:
+  repo_name: "aichatoffice"
+  repo_owner: "aichatoffice"
+  package_json: "app/package.json"
+
 jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_version: ${{ steps.release_info.outputs.release_version }}
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from package.json
+        uses: sergeysova/jq-action@v2
+        id: version
+        with:
+          cmd: 'jq .version ${{ env.package_json }} -r'
+
+      - name: Gather Release Information
+        id: release_info
+        run: |
+            echo "release_title=$(git show --format=%s --no-patch | head -1)" >> $GITHUB_OUTPUT
+            echo "release_version=$(TZ=Asia/Shanghai date +'v%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+              EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+            echo "release_body<<$EOF" >> $GITHUB_ENV
+            echo "$changelog_header" >> $GITHUB_ENV
+            echo "$changelog" >> $GITHUB_ENV
+            echo "$EOF" >> $GITHUB_ENV
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ steps.release_info.outputs.release_version }}
+          tag: ${{ github.ref }}
+          draft: false
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Build (${{ matrix.config.os }})
     runs-on: ${{ matrix.config.os }}
+    needs: create_release
     strategy:
       fail-fast: false
       matrix:
@@ -66,15 +112,21 @@ jobs:
           name: ${{ matrix.config.name }}
           path: ${{ matrix.config.artifact_path }}
 
-      - name: Create Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            app/dist_electron/*.exe
-            app/dist_electron/*.dmg
-          draft: true
-          name: Release ${{ github.sha }}
-          tag_name: v${{ github.run_number }}
+      - name: Debug Release Info
+        run: |
+          echo "Debug Release Info:"
+          echo "upload_url  : ${{ needs.create_release.outputs.upload_url }}"
+          echo "release_version: ${{ needs.create_release.outputs.release_version }}"
+          echo "asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}"
+          echo "asset_path: ${{ github.workspace }}/app/dist_electron/*.${{ matrix.config.suffix }}"
+          ls -la ${{ github.workspace }}/app/dist_electron/
+
+      - name: Upload Release
+        uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}
+          asset_path: ${{ github.workspace }}/app/dist_electron/*.${{ matrix.config.suffix }}
+          asset_content_type: application/octet-stream
