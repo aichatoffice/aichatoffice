@@ -55,7 +55,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           name: ${{ steps.release_info.outputs.release_version }}
-          tag: ${{ github.ref }}
+          tag: 'aichatoffice-${{ steps.release_info.outputs.release_version }}'
           draft: false
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
