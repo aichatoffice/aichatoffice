@@ -1,0 +1,79 @@
+name: Build AIChatOffice
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # 允许手动触发工作流
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.config.os }})
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: windows-latest
+            name: Windows Build
+            electron_args: "electron:build:win"
+            artifact_path: "app/dist_electron/*.exe"
+            suffix: "win.exe"
+          
+          - os: macos-latest
+            name: macOS Build (x64)
+            electron_args: "electron:build:mac-x64"
+            artifact_path: "app/dist_electron/*.dmg"
+            suffix: "mac-x64.dmg"
+            
+          - os: macos-latest
+            name: macOS Build (arm64)
+            electron_args: "electron:build:mac-arm64"
+            artifact_path: "app/dist_electron/*.dmg"
+            suffix: "mac-arm64.dmg"
+            
+          - os: macos-latest
+            name: macOS Build (universal)
+            electron_args: "electron:build:mac-universal"
+            artifact_path: "app/dist_electron/*.dmg"
+            suffix: "mac-universal.dmg"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install
+        working-directory: ./app
+
+      - name: Build application
+        run: npm run ${{ matrix.config.electron_args }}
+        working-directory: ./app
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.config.name }}
+          path: ${{ matrix.config.artifact_path }}
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            app/dist_electron/*.exe
+            app/dist_electron/*.dmg
+          draft: true
+          name: Release ${{ github.sha }}
+          tag_name: v${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

@@ -15,7 +15,9 @@
     "electron-start": "NODE_ENV=development electron ./electron/main.js",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "npm run build && electron-builder --win",
-    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:mac-arm64": "npm run build && electron-builder --mac --arm64",
+    "electron:build:mac-x64": "npm run build && electron-builder --mac --x64",
+    "electron:build:mac-universal": "npm run build && electron-builder --mac --universal",
     "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
@@ -42,7 +44,14 @@
     "mac": {
       "icon": "public/logo.png",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64",
+            "universal"
+          ]
+        }
       ],
       "identity": null,
       "hardenedRuntime": false
