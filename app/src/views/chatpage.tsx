@@ -21,7 +21,7 @@ export default function DocumentChat() {
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, createFileChat, getFileById } = useFiles()
+  const { getPreviewUrl, createFileChat, getFileById, getServerUrl } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
@@ -33,18 +33,38 @@ export default function DocumentChat() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
   const [showHint, setShowHint] = useState(true)
 
-  const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, error, reload } = useChat({
+  const [serverUrl, setServerUrl] = useState("")
+
+  // 添加新的状态来跟踪每条消息的状态
+  const [messageStates, setMessageStates] = useState<{
+    [key: string]: {
+      isLoading?: boolean;
+      isError?: boolean;
+      isStopped?: boolean;
+    };
+  }>({});
+
+  const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialInput: f({ id: "chat.summary" }),
-    api: `/api/chat/${conversationId}/chat`,
-    onResponse: (response) => {
-      if (response.status === 500) {
-        toast({
-          title: f({ id: "chat.error" }),
-          variant: "destructive"
-        });
-      }
-    }
+    api: `${serverUrl}/api/chat/${conversationId}/chat`,
   });
+
+
+  useEffect(() => {
+    getServerUrl().then(result => {
+      setServerUrl(result)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (error) {
+      const lastMessage = messages[messages.length - 1];
+      setMessageStates(prev => ({
+        ...prev,
+        [lastMessage.id]: { isError: true }
+      }));
+    }
+  }, [messages, error])
 
   useEffect(() => {
     scrollToBottom()
@@ -166,6 +186,17 @@ export default function DocumentChat() {
     toast({
       title: f({ id: "common.copy.success" }),
     });
+  }
+
+  const handleStop = () => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage) {
+      setMessageStates(prev => ({
+        ...prev,
+        [lastMessage.id]: { isStopped: true }
+      }));
+    }
+    stop();
   }
 
   return (
@@ -310,22 +341,14 @@ export default function DocumentChat() {
                             }`}
                         >
                           <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
-                            {(status == "submitted" && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
-                              <div className="flex gap-1">
-                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
-                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="break-words max-w-full"
-                                  dangerouslySetInnerHTML={{
-                                    __html: message.content || ""
-                                  }}
-                                />
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="break-words max-w-full"
+                                dangerouslySetInnerHTML={{
+                                  __html: message.content || ""
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
                         {message.role === "assistant" && (
@@ -337,11 +360,10 @@ export default function DocumentChat() {
                         )}
                       </div>
                     </div>
-
-                    {/* 在每条助手消息后检查是否需要显示错误 */}
-                    {error && message.role === "user" && (
-                      <div className="flex gap-3 mt-2">
-                        <div className="flex items-center max-w-full">
+                    {/* 加载状态 */}
+                    {(status === "submitted" && message.role === "user" &&
+                      message.id === messages[messages.length - 1].id) && (
+                        <div className="flex gap-3 mt-2">
                           <img
                             src={avatar || "/placeholder.svg"}
                             alt="Chat Icon"
@@ -349,30 +371,55 @@ export default function DocumentChat() {
                             height={28}
                             className="object-cover flex-shrink-0 self-start"
                           />
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
-                              <Info className="w-4 h-4 text-[#f93a37]" />
-                              {f({ id: "chat.error" })}
-                            </div>
-                            <div className="flex items-center gap-1 ml-3">
-                              <button className="p-1 hover:bg-gray-100 rounded">
-                                <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
-                              </button>
-                              {
-                                index === messages.length - 1 && (
-                                  <button
-                                    onClick={() => reload()}
-                                    className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm"
-                                  >
-                                    <RefreshCcw className="w-4 h-4" />
-                                  </button>
-                                )
-                              }
+                          <div className="flex gap-1 bg-gray-100 p-3 rounded-2xl">
+                            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
+                          </div>
+                        </div>
+                      )}
+                    {/* 错误和中断状态 */}
+                    {((messageStates[message.id]?.isError || messageStates[message.id]?.isStopped) &&
+                      message.role === "user") && (
+                        <div className="flex gap-3 mt-2">
+                          <div className="flex items-center max-w-full">
+                            <img
+                              src={avatar || "/placeholder.svg"}
+                              alt="Chat Icon"
+                              width={28}
+                              height={28}
+                              className="object-cover flex-shrink-0 self-start"
+                            />
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
+                                <Info className="w-4 h-4 text-[#f93a37]" />
+                                {messageStates[message.id]?.isError ? f({ id: "chat.error" }) : f({ id: "chat.retry" })}
+                              </div>
+                              <div className="flex items-center gap-1 ml-3">
+                                <button className="p-1 hover:bg-gray-100 rounded">
+                                  <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
+                                </button>
+                                {
+                                  index === messages.length - 1 && (
+                                    <button
+                                      onClick={() => {
+                                        reload()
+                                        setMessageStates(prev => ({
+                                          ...prev,
+                                          [message.id]: { isError: false, isStopped: false }
+                                        }));
+                                      }}
+                                      className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm"
+                                    >
+                                      <RefreshCcw className="w-4 h-4" />
+                                    </button>
+                                  )
+                                }
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
@@ -401,11 +448,11 @@ export default function DocumentChat() {
                 <Button
                   type="submit"
                   className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
-                  onClick={() => (status == "submitted" || status == "streaming") && stop()}
-                  disabled={!input}
+                  onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
+                  disabled={!(input || status !== "ready")}
                 >
                   {status == "submitted" || status == "streaming" ? (
-                    <Square className="h-4 w-4 animate-spin" />
+                    <Square className="h-4 w-4" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
