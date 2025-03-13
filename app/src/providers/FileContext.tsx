@@ -231,7 +231,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     if (!isElectron()) {
       const response = await apiRequest({
         method: 'POST',
-        path: `/api/chat/${conversation_id}/chat`,
+        path: `/api/chatv2/${conversation_id}/chat`,
         body: JSON.stringify(message),
         headers: {
           'Content-Type': 'application/json',

@@ -170,15 +170,17 @@ func AIConfig(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": gin.H{
-			"llm": gin.H{
-				"baseUrl":        econf.GetString("openai.llm.baseUrl"),
-				"textModel":      econf.GetString("openai.llm.textModel"),
-				"token":          econf.GetString("openai.llm.token"),
-				"name":           econf.GetString("openai.llm.name"),
-				"proxyUrl":       econf.GetString("openai.llm.proxyUrl"),
-				"subservice":     econf.GetString("openai.llm.subservice"),
-				"inputMaxToken":  econf.GetInt("openai.llm.inputMaxToken"),
-				"outputMaxToken": econf.GetInt("openai.llm.outputMaxToken"),
+			"llmList": []gin.H{
+				{
+					"baseUrl":        econf.GetString("openai.llm.baseUrl"),
+					"textModel":      econf.GetString("openai.llm.textModel"),
+					"token":          econf.GetString("openai.llm.token"),
+					"name":           econf.GetString("openai.llm.name"),
+					"proxyUrl":       econf.GetString("openai.llm.proxyUrl"),
+					"subservice":     econf.GetString("openai.llm.subservice"),
+					"inputMaxToken":  econf.GetInt("openai.llm.inputMaxToken"),
+					"outputMaxToken": econf.GetInt("openai.llm.outputMaxToken"),
+				},
 			},
 		},
 	})

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gotomicro/ego/core/elog"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"aichatoffice/pkg/models/dto"
@@ -40,6 +41,7 @@ func (l *LevelDBStore) DeleteFile(ctx context.Context, fileID string) error {
 }
 
 func (l *LevelDBStore) GetFilesList(ctx context.Context) (files []dto.File, err error) {
+	elog.Info("leveldb")
 	iter := l.DB.NewIterator(nil, nil)
 	defer iter.Release()
 	for iter.Next() {

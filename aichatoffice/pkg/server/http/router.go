@@ -53,9 +53,10 @@ func ServeHTTP() *egin.Component {
 		chatRouters.POST("/:conversation_id/chat", api.Chat) // todo summarize 是一种特殊的 chat
 	}
 
-	chatV2Routers := apiGroup.Group("/chat/v2")
+	chatV2Routers := apiGroup.Group("/chatv2")
 	{
-		chatV2Routers.POST("/completions", aiv2svc.Completions)
+		// chatV2Routers.POST("/:conversation_id/chat", aiv2svc.Completions)
+		chatV2Routers.POST("/chat", aiv2svc.Completions)
 	}
 
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))

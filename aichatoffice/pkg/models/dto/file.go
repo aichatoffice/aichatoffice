@@ -1,8 +1,8 @@
 package dto
 
 type File struct {
-	ID         int64  `json:"id" gorm:"primaryKey;autoIncrement"`
-	FileID     string `json:"file_id" gorm:"uniqueIndex"` // 唯一索引
+	ID         int64  `json:"-" gorm:"primaryKey;autoIncrement"`
+	FileID     string `json:"id" gorm:"uniqueIndex"` // 唯一索引
 	Name       string `json:"name"`
 	Version    int64  `json:"version"`
 	Type       string `json:"type"`

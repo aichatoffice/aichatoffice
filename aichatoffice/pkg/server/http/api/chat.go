@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gotomicro/ego/core/elog"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
@@ -19,7 +20,7 @@ import (
 )
 
 func NewConversation(c *gin.Context) {
-	c.JSON(204, nil)
+	c.JSON(200, gin.H{"data": gin.H{"conversation_id": uuid.New().String()}})
 	return
 	userId, ok := getUserId(c)
 	if !ok || userId == "" {

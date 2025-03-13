@@ -3,7 +3,6 @@ package aiv2svc
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"time"
@@ -77,25 +76,47 @@ func (o *openAI) loadConfig(aiConfig OpenAiConfig) {
 }
 
 func Completions(ctx *gin.Context) {
-	ctx.Header("Content-Type", "text/event-stream; charset=utf-8")
-	ctx.Stream(func(w io.Writer) bool {
-		ticker := time.NewTicker(500 * time.Millisecond)
-		defer ticker.Stop()
-		timeout := time.After(3 * time.Second)
+	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	ctx.Writer.Header().Set("Cache-Control", "no-cache")
+	ctx.Writer.Header().Set("Connection", "keep-alive")
+	ctx.Writer.Header().Set("Transfer-Encoding", "chunked")
+	ctx.Writer.Header().Set("x-vercel-ai-data-stream", "v1")
 
-		for {
-			select {
-			case <-timeout:
-				return false
-			case <-ticker.C:
-				randomNumber := rand.Intn(100) // 生成随机数字
-				_, err := fmt.Fprintf(w, "data: %d\n\n", randomNumber)
-				if err != nil {
-					elog.Error("write error", zap.Error(err))
-					return false
-				}
-				w.(http.Flusher).Flush()
-			}
+	event := make(chan string)
+
+	go func() {
+		event <- "hehellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellohellollo"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		time.Sleep(time.Second)
+		event <- "world"
+		close(event)
+	}()
+
+	ctx.Stream(func(w io.Writer) bool {
+		e, ok := <-event
+		if !ok {
+			return false
 		}
+		elog.Info("chat event", zap.String("event", e))
+		// ctx.Writer.WriteString(fmt.Sprintf("0: %s\n", e))
+		ctx.Writer.WriteString(fmt.Sprintf("data: %s\n\n", e))
+		w.(http.Flusher).Flush()
+
+		return true
 	})
 }

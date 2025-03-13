@@ -31,7 +31,7 @@ func (s *SqliteStore) SetFile(ctx context.Context, f dto.File) error {
 }
 
 func (s *SqliteStore) DeleteFile(ctx context.Context, fileID string) error {
-	return s.DB.Where("file_id = ?", fileID).Delete(&dto.File{}).Error
+	return s.DB.Delete(&dto.File{}, "file_id = ?", fileID).Error
 }
 
 func (s *SqliteStore) GetFilesList(ctx context.Context) (files []dto.File, err error) {
