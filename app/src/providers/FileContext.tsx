@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { isElectron, getIpcRenderer } from '../utils/electron'
 
 interface FileItem {
-  id: number
+  id: string
   file_id: string
   name: string
   type: string
@@ -25,7 +25,7 @@ interface FileContextType {
   setFiles: (files: FileItem[]) => void
   getFile: () => Promise<void>
   uploadFile: (file: File) => Promise<void>
-  deleteFile: (id: number) => Promise<void>
+  deleteFile: (id: string) => Promise<void>
   getPreviewUrl: (id: string) => Promise<string>
   filesLoading: boolean
   sendFileChatMessage: (
@@ -167,7 +167,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const deleteFile = async (id: number) => {
+  const deleteFile = async (id: string) => {
     try {
       await apiRequest({
         method: 'DELETE',

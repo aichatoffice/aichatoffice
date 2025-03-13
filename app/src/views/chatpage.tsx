@@ -6,34 +6,24 @@ import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
 import { useIntl } from "react-intl"
 import { useFiles } from "@/providers/FileContext"
-import { useToast } from "@/components/ui/use-toast"// ... existing code ...
+import { useToast } from "@/components/ui/use-toast"
 import * as pdfjsLib from 'pdfjs-dist'
 import { PDFDocumentProxy } from 'pdfjs-dist'
 import Robot from "@/assets/robot.png"
+import { useChat } from '@ai-sdk/react';
 
 const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
-
-interface Message {
-  id: number
-  role: string
-  content: string
-}
 
 export default function DocumentChat() {
   const { formatMessage: f } = useIntl()
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, createFileChat, sendFileChatMessage, breakFileChat, getFileById } = useFiles()
+  const { getPreviewUrl, createFileChat, getFileById } = useFiles()
   const [conversationId, setConversationId] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [message, setMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [isSending, setIsSending] = useState(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const { toast } = useToast()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -43,6 +33,18 @@ export default function DocumentChat() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
   const [showHint, setShowHint] = useState(true)
 
+  const { messages, input, handleInputChange, handleSubmit, stop, status, error, reload } = useChat({
+    api: `/api/chat/${conversationId}/chat`,
+    onResponse: (response) => {
+      if (response.status === 500) {
+        toast({
+          title: f({ id: "chat.error" }),
+          variant: "destructive"
+        });
+      }
+    }
+  });
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -51,7 +53,6 @@ export default function DocumentChat() {
     // 添加状态避免初始化时创建两次聊天
     let isSubscribed = true;
     async function initChat() {
-      setMessages([])
       setPreviewUrl("")
       setPdfData(null)
       if (!documentId) return;
@@ -140,175 +141,6 @@ export default function DocumentChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleSendMessage = async (m: string) => {
-    if (!m.trim()) return
-    setMessage("")
-    setIsLoading(true)
-    let processingPromise = Promise.resolve(); // 用于确保顺序处理
-    const controller = new AbortController()
-    setAbortController(controller)
-
-    // 添加用户消息
-    const userMessage = {
-      id: Date.now(),
-      role: "user",
-      content: m,
-    }
-    setMessages((prev) => [...prev, userMessage as Message])
-    // 添加对话消息
-    const assistantMessageId = Date.now() + 1
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: assistantMessageId,
-        role: "assistant",
-        content: "",
-      },
-    ])
-
-    let accumulatedResponse = "" // 存放完整的响应数据
-
-    try {
-      setIsSending(true)
-      await sendFileChatMessage(
-        conversationId,
-        {
-          stream: true,
-          content: [{ type: "text", text: m }],
-        },
-        async (chunk) => {
-          setIsLoading(false)
-          if (controller.signal.aborted) return
-
-          let textToAdd = chunk
-          try {
-            const parsedChunk = JSON.parse(chunk)
-            if (parsedChunk.type === "error") {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, content: f({ id: "chat.retry" }) }
-                    : msg
-                )
-              )
-              setIsSending(false)
-              return
-            } else if (parsedChunk.content) {
-              textToAdd = parsedChunk.content[0].text?.replace(/^[\n]+/, "") || "";
-              // 将新文本分割成字符数组
-              const chars = textToAdd.split('');
-
-              // 等待前一个处理完成后再处理新的内容
-              processingPromise = processingPromise.then(async () => {
-                for (const char of chars) {
-                  if (controller.signal.aborted) return;
-                  accumulatedResponse += char;
-
-                  await new Promise(resolve => {
-                    requestAnimationFrame(() => {
-                      // 在流式响应过程中也应用格式化
-                      const formattedText = formatMarkdownText(accumulatedResponse);
-                      setMessages(prev =>
-                        prev.map(msg =>
-                          msg.id === assistantMessageId
-                            ? { ...msg, content: formattedText }
-                            : msg
-                        )
-                      );
-                      setTimeout(resolve, 30);
-                    });
-                  });
-                }
-              });
-
-              await processingPromise; // 等待当前块处理完成
-            }
-          } catch (e) { }
-        },
-        controller.signal
-      );
-    } catch (error: unknown) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? {
-              ...m,
-              content: f({ id: "chat.retry" }),
-            }
-            : m
-        )
-      )
-    } finally {
-      setIsSending(false)
-      setIsLoading(false)
-      setAbortController(null)
-    }
-  }
-
-  const handleBreakChat = async () => {
-    if (abortController) {
-      abortController.abort()
-      setIsSending(false)
-      await breakFileChat(conversationId)
-      // 更新最后一条助手消息
-      setMessages((prev) =>
-        prev.map((m, index) =>
-          index === prev.length - 1 && m.role === "assistant"
-            ? { ...m, content: f({ id: "chat.retry" }) }
-            : m
-        )
-      )
-    }
-  }
-
-  const handleRetry = async (messageContent: string) => {
-    // 移除最后两条消息（用户的问题和助手的错误响应）
-    setMessages(prev => prev.slice(0, -2));
-    // 重新发送消息
-    await handleSendMessage(messageContent);
-  }
-
-  // 添加新的工具函数
-  const formatMarkdownText = (text: string): string => {
-    let formattedText = text
-
-    // 处理数学公式部分保持不变
-    formattedText = formattedText
-      .replace(/\\\[([\s\S]*?)\\\]/g, '<div class="math-block">$1</div>')
-      .replace(/\\\((.*?)\\\)/g, '<span class="math-inline">$1</span>')
-
-    // 改进粗体处理逻辑，使用非贪婪匹配并处理嵌套情况
-    formattedText = formattedText
-      .replace(/\*\*((?:[^*]|\*(?!\*))+?)\*\*/g, '<strong>$1</strong>')  // 处理所有 **文本** 格式
-      .replace(/\*([^*]+?)\*/g, '<em>$1</em>')             // 处理斜体
-      .replace(/_([^_]+?)_/g, '<em>$1</em>')               // 处理下划线斜体
-
-    // 处理缩进和空格
-    formattedText = formattedText
-      .replace(/&nbsp;/g, ' ')
-      .replace(/^\s{2,}/gm, match => match.replace(/ /g, '&nbsp;'))
-
-    // 处理标题格式
-    formattedText = formattedText.replace(/^(#{1,6})\s+(.+)$/gm, '<h$1>$2</h$1>')
-
-    // 处理代码块和行内代码
-    formattedText = formattedText
-      .replace(/```(\w*)\n([\s\S]*?)\n```/g, '<pre><code class="language-$1">$2</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-
-    // 处理列表
-    formattedText = formattedText.replace(/^(\s*[-*]\s)/gm, match => match.replace(/ /g, '&nbsp;'))
-
-    // 处理链接
-    formattedText = formattedText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-
-    // 处理换行，但保留数学公式块的换行
-    formattedText = formattedText.replace(/(?<!<div class="math-block">[\s\S]*)\n(?![\s\S]*<\/div>)/g, '<br>')
-
-    return formattedText
-  }
-
-  // 添加页面切换函数
   const changePage = async (newPage: number) => {
     if (!pdfDoc || newPage < 1 || newPage > totalPages) return
     setCurrentPage(newPage)
@@ -325,33 +157,21 @@ export default function DocumentChat() {
     }
   }, [showHint])
 
+  const handleCopy = (content: string) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    const formattedText = tempDiv.innerText;
+    navigator.clipboard.writeText(formattedText);
+    toast({
+      title: f({ id: "common.copy.success" }),
+    });
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* 添加提示组件 */}
-          {showHint && !isChatOpen && (
-            <div
-              className="absolute right-20 top-7 bg-white shadow-lg rounded-lg p-3 z-10 animate-bounce
-              transition-opacity duration-500 ease-in-out opacity-100"
-              onClick={() => setShowHint(false)}
-              style={{
-                animation: 'bounce 1s infinite, fadeOut 0.5s ease-in-out 4.5s forwards'
-              }}
-            >
-              <style>{`
-                @keyframes fadeOut {
-                  from { opacity: 1; }
-                  to { opacity: 0; }
-                }
-              `}</style>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                {f({ id: "chat.hint" })}
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
-              </div>
-            </div>
-          )}
           {/* {previewUrl} */}
           {previewUrl ? (
             <iframe src={previewUrl} className="w-full h-full" />
@@ -383,7 +203,7 @@ export default function DocumentChat() {
               )}
             </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-500">加载中...</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-500">{f({ id: "common.loading" })}</div>
           )}
         </div>
 
@@ -391,6 +211,28 @@ export default function DocumentChat() {
         <div
           className={`${isChatOpen ? "w-[300px] md:w-[400px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
         >
+          {/* 添加提示组件 */}
+          {showHint && !isChatOpen && (
+            <div
+              className="absolute right-20 top-7 bg-white shadow-lg rounded-lg p-3 z-10 animate-bounce
+              transition-opacity duration-500 ease-in-out opacity-100 w-[210px]"
+              onClick={() => setShowHint(false)}
+              style={{
+                animation: 'bounce 1s infinite, fadeOut 0.5s ease-in-out 4.5s forwards'
+              }}
+            >
+              <style>{`
+                @keyframes fadeOut {
+                  from { opacity: 1; }
+                  to { opacity: 0; }
+                }
+              `}</style>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                {f({ id: "chat.hint" })}
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
+              </div>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -429,7 +271,12 @@ export default function DocumentChat() {
                 </div>
 
                 <button
-                  onClick={() => handleSendMessage(f({ id: "chat.summary" }))}
+                  onClick={() => {
+                    handleInputChange({ target: { value: f({ id: "chat.summary" }) } } as any)
+                    setTimeout(() => {
+                      handleSubmit(new Event('submit'))
+                    }, 100)
+                  }}
                   className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
                 >
                   <div className="w-5 h-5 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
@@ -463,7 +310,7 @@ export default function DocumentChat() {
                           }`}
                       >
                         <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
-                          {(isLoading && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
+                          {(status == "submitted" && message.role === "assistant" && message.id === messages[messages.length - 1].id) ? (
                             <div className="flex gap-1">
                               <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
                               <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
@@ -487,17 +334,7 @@ export default function DocumentChat() {
                       {message.role === "assistant" && (
                         <div className="flex items-center gap-1 mt-2">
                           <button className="p-1 hover:bg-gray-100 rounded">
-                            <Copy className="w-4 h-4 text-gray-500" onClick={() => {
-                              // 创建临时div来解析HTML
-                              const tempDiv = document.createElement('div');
-                              tempDiv.innerHTML = message.content;
-                              // 获取格式化后的文本
-                              const formattedText = tempDiv.innerText;
-                              navigator.clipboard.writeText(formattedText);
-                              toast({
-                                title: f({ id: "common.copy.success" }),
-                              });
-                            }} />
+                            <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
                           </button>
                           {(message.content === f({ id: "chat.retry" }) &&
                             message.id === messages[messages.length - 1].id) && (
@@ -509,7 +346,7 @@ export default function DocumentChat() {
                                     .reverse()
                                     .find(m => m.role === "user");
                                   if (prevUserMessage) {
-                                    handleRetry(prevUserMessage.content);
+                                    // handleRetry(prevUserMessage.content);
                                   }
                                 }}
                                 className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm "
@@ -522,6 +359,29 @@ export default function DocumentChat() {
                     </div>
                   </div>
                 ))}
+                {error && (
+                  <div className="flex gap-3">
+                    <div className="flex items-center  max-w-full">
+                      <img
+                        src={avatar || "/placeholder.svg"}
+                        alt="Chat Icon"
+                        width={28}
+                        height={28}
+                        className="object-cover flex-shrink-0 self-start"
+                      />
+                      <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
+                        <Info className="w-4 h-4 text-[#f93a37]" />
+                        {f({ id: "chat.error" })}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => reload()}
+                      className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm "
+                    >
+                      <RefreshCcw className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -529,33 +389,33 @@ export default function DocumentChat() {
 
           {isChatOpen && (
             <div className="p-4 border-t border-gray-200">
-              <div className="flex gap-2">
+              <form onSubmit={handleSubmit} className="flex gap-2">
                 <Input
                   placeholder={f({ id: "chat.placeholder" })}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  disabled={isSending || isLoading}
+                  name="prompt"
+                  value={input}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
-                      handleSendMessage(message)
+                      handleSubmit(e)
                     }
                   }}
                   className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
                 />
                 <Button
-                  onClick={isSending ? handleBreakChat : () => handleSendMessage(message)}
-                  size="icon"
-                  className={`rounded-xl ${isSending ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
-                  disabled={!isSending && message.length === 0}
+                  type="submit"
+                  className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
+                  onClick={() => (status == "submitted" || status == "streaming") && stop()}
+                  disabled={!input}
                 >
-                  {isSending ? (
-                    <Square className="h-4 w-4" />
+                  {status == "submitted" || status == "streaming" ? (
+                    <Square className="h-4 w-4 animate-spin" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
                 </Button>
-              </div>
+              </form>
             </div>
           )}
         </div>

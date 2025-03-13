@@ -17,6 +17,7 @@ export default {
   "chat.summary.1": `I have read this document carefully. Let me summarize the main content for you:\n1. The main points of the document\n   - Core points and discoveries\n   - Research methods and processes\n   - Important conclusions\n\n2. Key points\n   - Important data and evidence\n   - Innovations\n   - Practical application value\n\n3. Suggestions and insights\n   - Impact on related fields\n   - Future research directions\n\nWhich aspect do you want to know in more detail? I can provide a more detailed analysis for you.`,
   "chat.summary.2": "I have read your question. Let me analyze the content related to the document:",
   "chat.retry": "Conversation interrupted",
+  "chat.error": "An error occurred",
   "chat.hint": "Click the robot icon to start AI chat",
   // 首页
   "homepage.title": "Chat with any Document",
@@ -66,4 +67,5 @@ export default {
   "common.copy": "Copy",
   "common.copy.success": "Copied to clipboard",
   "common.retry": "Retry",
+  "common.loading": "Loading...",
 };
