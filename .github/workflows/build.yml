@@ -8,6 +8,12 @@ on:
   # 允许手动触发工作流
   workflow_dispatch:
 
+# 添加权限配置
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
 env:
   repo_name: "aichatoffice"
   repo_owner: "aichatoffice"
