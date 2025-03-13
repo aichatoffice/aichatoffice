@@ -71,6 +71,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.3",
+    "@ai-sdk/react": "^1.1.22",
     "@electron/remote": "^2.1.2",
     "@fontsource/open-sans": "^5.2.5",
     "@radix-ui/react-accordion": "^1.2.2",

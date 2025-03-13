@@ -25,11 +25,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/showcase': {
-        target: 'http://127.0.0.1:8000',  // 设置基础 URL
+        target: 'http://127.0.0.1:9001',  // 设置基础 URL
         changeOrigin: true
       },
       '/api': {
-        target: 'http://127.0.0.1:8000',  // 设置基础 URL
+        target: 'http://127.0.0.1:9001',  // 设置基础 URL
         changeOrigin: true
       }
     }
