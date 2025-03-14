@@ -68,29 +68,23 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: windows-latest
-            name: Windows Build
-            electron_args: "electron:build:win"
-            artifact_path: "app/dist_electron/*.exe"
-            suffix: "win.exe"
-          
           - os: macos-latest
             name: macOS Build (x64)
             electron_args: "electron:build:mac-x64"
             artifact_path: "app/dist_electron/*.dmg"
-            suffix: "mac-x64.dmg"
+            suffix: "x64.dmg"
             
           - os: macos-latest
             name: macOS Build (arm64)
             electron_args: "electron:build:mac-arm64"
             artifact_path: "app/dist_electron/*.dmg"
-            suffix: "mac-arm64.dmg"
+            suffix: "arm64.dmg"
             
           - os: macos-latest
             name: macOS Build (universal)
             electron_args: "electron:build:mac-universal"
             artifact_path: "app/dist_electron/*.dmg"
-            suffix: "mac-universal.dmg"
+            suffix: "universal.dmg"
 
     steps:
       - name: Checkout code
@@ -124,7 +118,7 @@ jobs:
           echo "upload_url  : ${{ needs.create_release.outputs.upload_url }}"
           echo "release_version: ${{ needs.create_release.outputs.release_version }}"
           echo "asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}"
-          echo "asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}"
+          echo "asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}"
           ls -la ${{ github.workspace }}/app/dist_electron/
 
       - name: Upload Release
@@ -134,5 +128,5 @@ jobs:
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}
-          asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}
+          asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}
           asset_content_type: application/octet-stream

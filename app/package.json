@@ -53,6 +53,7 @@
           ]
         }
       ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "identity": null,
       "hardenedRuntime": false
     },
