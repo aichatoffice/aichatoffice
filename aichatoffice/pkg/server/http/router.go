@@ -55,8 +55,7 @@ func ServeHTTP() *egin.Component {
 
 	chatV2Routers := apiGroup.Group("/chatv2")
 	{
-		// chatV2Routers.POST("/:conversation_id/chat", aiv2svc.Completions)
-		chatV2Routers.POST("/chat", aiv2svc.Completions)
+		chatV2Routers.POST("/:conversation_id/chat", aiv2svc.Completions)
 	}
 
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))
