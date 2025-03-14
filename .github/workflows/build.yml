@@ -31,12 +31,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - id: thisLatestRelease
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          repository: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          excludes: prerelease, draft
+      # 获取最新发布版本
+      # - id: thisLatestRelease
+      #   uses: pozetroninc/github-action-get-latest-release@master
+      #   with:
+      #     repository: ${{ github.repository }}
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     excludes: prerelease, draft
 
       - name: Extract version from package.json
         uses: sergeysova/jq-action@v2
@@ -49,13 +50,8 @@ jobs:
         run: |
             echo "release_title=$(git show --format=%s --no-patch | head -1)" >> $GITHUB_OUTPUT
             echo "release_version=$(TZ=Asia/Shanghai date +'v%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-              EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-            echo "release_body<<$EOF" >> $GITHUB_ENV
-            echo "$changelog_header" >> $GITHUB_ENV
-            echo "$changelog" >> $GITHUB_ENV
-            echo "$EOF" >> $GITHUB_ENV
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+               EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+            echo "release_body=自动构建发布 $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
