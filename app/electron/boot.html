@@ -121,6 +121,9 @@
             status.textContent = `下载SDK程序: ${Math.round(progressValue * 100)}%`;
           }
           progress.style.width = `${progressValue * 100}%`;
+        } else if (data.status === 'extracting') {
+          status.textContent = `解压程序: ${Math.round(progressValue * 100)}%`;
+          progress.style.width = `${progressValue * 100}%`;
         }
       });
     });

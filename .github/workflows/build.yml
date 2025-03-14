@@ -31,14 +31,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 获取最新发布版本
-      # - id: thisLatestRelease
-      #   uses: pozetroninc/github-action-get-latest-release@master
-      #   with:
-      #     repository: ${{ github.repository }}
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #     excludes: prerelease, draft
-
       - name: Extract version from package.json
         uses: sergeysova/jq-action@v2
         id: version
@@ -82,12 +74,6 @@ jobs:
             electron_args: "electron:build:mac-arm64"
             artifact_path: "app/dist_electron/*.dmg"
             suffix: "arm64.dmg"
-            
-          - os: macos-latest
-            name: macOS Build (universal)
-            electron_args: "electron:build:mac-universal"
-            artifact_path: "app/dist_electron/*.dmg"
-            suffix: "universal.dmg"
 
     steps:
       - name: Checkout code

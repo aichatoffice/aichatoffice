@@ -6,6 +6,7 @@ import fs, { write } from 'node:fs'
 import gNet from 'net'
 import cp from 'child_process'
 import remote from '@electron/remote/main/index.js'
+import yauzl from 'yauzl'
 
 // ES模块中 __dirname 的替代方案
 const __filename = fileURLToPath(import.meta.url)
@@ -26,9 +27,13 @@ let kernelProcess
 let kernelSDKProcess
 let bootWindow
 let openAsHidden = false
-// 执行包下载
-const aichatofficeExec = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1757234029&Signature=BMbMoxVDl69QuCybkOvi5QEYvXA%3D"
-const turbooneExec = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1757233960&Signature=kzEOoP36qUj3u63yufzkUV4rrMg%3D"
+// 根据不同环境下载对应执行包 x86_64
+// 执行包
+let aichatofficeExec = ""
+let turbooneExec = "turboone"
+// 执行包下载地址
+let aichatofficeExecUrl = ""
+let turbooneExecUrl = ""
 
 let workspaces = []
 remote.initialize()
@@ -136,6 +141,11 @@ async function runServer() {
     return true;
   } catch (error) {
     writeLog(`Server startup failed: ${error.message}`);
+
+    showErrorWindow("⚠️ Server startup failed",
+      `<div>下载服务程序失败,请检查网络连接后重试。</div>
+       <div><i>${error.message}</i></div>`);
+
     if (bootWindow && !bootWindow.isDestroyed()) {
       bootWindow.destroy();
     }
@@ -175,10 +185,24 @@ async function initBootWindow() {
 }
 
 function getServerPaths() {
+  // 根据不同环境下载对应执行包 
+  if (process.arch === "x64") {
+    // x86_64
+    aichatofficeExec = "aichatoffice-x64"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026896&Signature=ieYyg3l8UEIQqhg26f050xqXaFc%3D"
+    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026774&Signature=RICIlLM5vBJVns2YtNp%2Bsw8fqg4%3D"
+  } else if (process.arch === "arm64") {
+    // arm64
+    aichatofficeExec = "aichatoffice-arm64"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026911&Signature=Af1NEfem9s0FqMwP6cybjwZTBtA%3D"
+    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
+  } else {
+    throw new Error("Unsupported architecture: " + process.arch)
+  }
   const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
   return {
-    serverPath: path.join(basePath, 'aichatoffice'),
-    sdkServerPath: path.join(basePath, 'turboone')
+    serverPath: path.join(basePath, aichatofficeExec),
+    sdkServerPath: path.join(basePath, turbooneExec)
   };
 }
 
@@ -191,10 +215,10 @@ async function checkServerExecutables(serverPath, sdkServerPath) {
     try {
       // 分别下载所需的可执行文件
       if (needsKernelDownload) {
-        await downloadExecutable(aichatofficeExec, serverPath, 'kernel');
+        await downloadExecutable(aichatofficeExecUrl, serverPath, 'kernel');
       }
       if (needsSDKDownload) {
-        await downloadExecutable(turbooneExec, sdkServerPath, 'sdk');
+        await downloadExecutable(turbooneExecUrl, sdkServerPath, 'sdk');
       }
     } catch (error) {
       showErrorWindow("⚠️ 下载失败 Download failed",
@@ -228,9 +252,8 @@ async function checkServerExecutables(serverPath, sdkServerPath) {
   return true;
 }
 
-// 下载单个可执行文件的函数
+// 更新 downloadExecutable 函数以支持新的进度格式
 async function downloadExecutable(url, destPath, fileType) {
-  // 更新启动窗口显示下载状态
   if (bootWindow) {
     bootWindow.webContents.send('download-progress', {
       status: 'start',
@@ -243,8 +266,8 @@ async function downloadExecutable(url, destPath, fileType) {
       if (bootWindow) {
         bootWindow.webContents.send('download-progress', {
           file: fileType,
-          progress: progress,
-          status: 'downloading'
+          progress: progress.progress,
+          status: progress.phase
         });
       }
     });
@@ -252,7 +275,7 @@ async function downloadExecutable(url, destPath, fileType) {
     if (bootWindow) {
       bootWindow.webContents.send('download-progress', {
         status: 'complete',
-        message: `${fileType === 'kernel' ? '内核' : 'SDK'}程序下载完成`
+        message: `${fileType === 'kernel' ? '内核' : 'SDK'}程序安装完成`
       });
     }
   } catch (error) {
@@ -261,11 +284,12 @@ async function downloadExecutable(url, destPath, fileType) {
   }
 }
 
+// 下载单个可执行文件的函数
 async function downloadFile(url, destPath, onProgress) {
-  // 创建临时下载目录
   const tempDir = path.join(confDir, 'temp');
   const tempFileName = `download_${Date.now()}.tmp`;
   const tempPath = path.join(tempDir, tempFileName);
+  const isZipFile = url.includes('.zip');
 
   try {
     // 确保临时目录存在
@@ -281,52 +305,146 @@ async function downloadFile(url, destPath, onProgress) {
       writeLog(`创建目标目录: ${targetDir}`);
     }
 
+    // 下载文件
     writeLog(`开始从华为云下载文件: ${url} 到临时文件 ${tempPath}`);
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
+
     const totalSize = parseInt(response.headers.get('content-length'), 10);
     let downloadedSize = 0;
-    // 创建写入临时文件的流
     const fileStream = fs.createWriteStream(tempPath);
-    // 获取可读流
     const reader = response.body.getReader();
-    // 处理数据块
+
+    // 处理下载进度
     while (true) {
       const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      // 写入数据到临时文件
+      if (done) break;
+
       fileStream.write(Buffer.from(value));
-      // 更新进度
       downloadedSize += value.length;
       const progress = downloadedSize / totalSize;
-      onProgress(progress);
+      onProgress({ phase: 'downloading', progress: progress });
       writeLog(`下载进度: ${(progress * 100).toFixed(2)}%`);
     }
-    // 关闭写入流
+
     fileStream.end();
-    // 等待写入完成
     await new Promise((resolve, reject) => {
       fileStream.on('finish', resolve);
       fileStream.on('error', reject);
     });
-    writeLog('文件下载完成，准备移动到目标位置');
-    // 下载完成后，将临时文件移动到目标位置
-    fs.renameSync(tempPath, destPath);
-    // 设置文件权限
-    fs.chmodSync(destPath, 0o755);
-    writeLog('文件下载和移动完成');
-    // 清理临时文件（如果移动失败）
+
+    // 如果是zip文件，进行解压处理
+    if (isZipFile) {
+      writeLog('开始解压文件...');
+      onProgress({ phase: 'extracting', progress: 0 });
+      const extractDir = path.join(tempDir, `extract_${Date.now()}`);
+
+      await new Promise((resolve, reject) => {
+        yauzl.open(tempPath, { lazyEntries: true }, (err, zipfile) => {
+          if (err) return reject(err);
+
+          const totalEntries = zipfile.entryCount;
+          let processedEntries = 0;
+
+          zipfile.on('entry', (entry) => {
+            if (/\/$/.test(entry.fileName)) {
+              processedEntries++;
+              zipfile.readEntry();
+              return;
+            }
+
+            // 创建目标文件的目录
+            const targetPath = path.join(extractDir, entry.fileName);
+            fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+
+            zipfile.openReadStream(entry, (err, readStream) => {
+              if (err) return reject(err);
+
+              const writeStream = fs.createWriteStream(targetPath);
+              readStream.pipe(writeStream);
+
+              writeStream.on('finish', () => {
+                processedEntries++;
+                const progress = processedEntries / totalEntries;
+                onProgress({ phase: 'extracting', progress });
+                writeLog(`解压进度: ${(progress * 100).toFixed(2)}%`);
+                zipfile.readEntry();
+              });
+            });
+          });
+
+          zipfile.on('end', () => {
+            writeLog('解压完成');
+            onProgress({ phase: 'extracting', progress: 1 });
+            resolve(extractDir);
+          });
+
+          zipfile.readEntry();
+        });
+      });
+
+      // 找到解压后的可执行文件并移动到目标位置
+      writeLog(`查找可执行文件: ${turbooneExec}`);
+
+      // 递归查找指定名称的可执行文件
+      function findExecutableFile(dir, execName) {
+        const items = fs.readdirSync(dir);
+        writeLog(`当前目录 ${dir} 内容: ${JSON.stringify(items)}`);
+
+        for (const item of items) {
+          const fullPath = path.join(dir, item);
+          const stat = fs.statSync(fullPath);
+
+          if (stat.isDirectory()) {
+            // 如果是目录，递归搜索
+            const found = findExecutableFile(fullPath, execName);
+            if (found) return found;
+          } else if (item === execName) {
+            // 找到指定名称的可执行文件
+            return fullPath;
+          }
+        }
+        return null;
+      }
+
+      const execFilePath = findExecutableFile(extractDir, turbooneExec);
+      if (!execFilePath) {
+        throw new Error(`未找到可执行文件: ${turbooneExec}`);
+      }
+
+      writeLog(`找到可执行文件: ${execFilePath}`);
+
+      // 确保目标路径的目录存在
+      const destDir = path.dirname(destPath);
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+
+      // 移动文件到目标位置
+      fs.renameSync(execFilePath, destPath);
+      fs.chmodSync(destPath, 0o755);
+
+      // 清理解压目录
+      fs.rmSync(extractDir, { recursive: true, force: true });
+    } else {
+      // 非zip文件直接移动到目标位置
+      fs.renameSync(tempPath, destPath);
+      fs.chmodSync(destPath, 0o755);
+    }
+
+    writeLog('文件处理完成');
+
+    // 清理临时文件
     if (fs.existsSync(tempPath)) {
       fs.unlinkSync(tempPath);
     }
+
     return true;
   } catch (error) {
-    writeLog(`下载过程发生异常: ${error.message}`);
-    // 如果下载失败，清理临时文件
+    writeLog(`处理过程发生异常: ${error.message}`);
+    // 清理临时文件
     try {
       if (fs.existsSync(tempPath)) {
         fs.unlinkSync(tempPath);
@@ -334,7 +452,7 @@ async function downloadFile(url, destPath, onProgress) {
       }
       if (fs.existsSync(destPath)) {
         fs.unlinkSync(destPath);
-        writeLog(`删除未完成的下载文件: ${destPath}`);
+        writeLog(`删除未完成的目标文件: ${destPath}`);
       }
     } catch (unlinkError) {
       writeLog(`删除临时文件失败: ${unlinkError.message}`);
