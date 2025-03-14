@@ -31,6 +31,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - id: thisLatestRelease
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          excludes: prerelease, draft
+
       - name: Extract version from package.json
         uses: sergeysova/jq-action@v2
         id: version
@@ -54,8 +61,8 @@ jobs:
         id: create_release
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ steps.release_info.outputs.version }}
-          tag: 'aichatoffice-${{ steps.release_info.outputs.version }}'
+          name: 'aichatoffice ${{ steps.release_info.outputs.release_version }}'
+          tag: 'aichatoffice-${{ steps.release_info.outputs.release_version }}'
           draft: false
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
