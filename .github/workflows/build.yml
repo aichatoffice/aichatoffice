@@ -54,8 +54,8 @@ jobs:
         id: create_release
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ steps.release_info.outputs.release_version }}
-          tag: 'aichatoffice-${{ steps.release_info.outputs.release_version }}'
+          name: ${{ steps.release_info.outputs.version }}
+          tag: 'aichatoffice-${{ steps.release_info.outputs.version }}'
           draft: false
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -116,8 +116,7 @@ jobs:
         run: |
           echo "Debug Release Info:"
           echo "upload_url  : ${{ needs.create_release.outputs.upload_url }}"
-          echo "release_version: ${{ needs.create_release.outputs.release_version }}"
-          echo "asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}"
+          echo "asset_name: aichatoffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}"
           echo "asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}"
           ls -la ${{ github.workspace }}/app/dist_electron/
 
@@ -127,6 +126,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: aichatoffice-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}
+          asset_name: aichatoffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}
           asset_path: ${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}
           asset_content_type: application/octet-stream
