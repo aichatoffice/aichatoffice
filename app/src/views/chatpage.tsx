@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, ChevronLeft, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
+import { ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
@@ -44,9 +44,19 @@ export default function DocumentChat() {
     };
   }>({});
 
+  const [collapsedReasonings, setCollapsedReasonings] = useState<{ [key: string]: boolean }>({});
+
+  const toggleReasoning = (index: string) => {
+    setCollapsedReasonings(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialInput: f({ id: "chat.summary" }),
-    api: `${serverUrl}/api/chat/${conversationId}/chat`,
+    // api: `${serverUrl}/api/chat/${conversationId}/chat`,
+    api: `${serverUrl}/api/chatv2/${conversationId}/chat`,
   });
 
 
@@ -58,6 +68,7 @@ export default function DocumentChat() {
 
   useEffect(() => {
     if (error) {
+      console.log("error", error)
       const lastMessage = messages[messages.length - 1];
       setMessageStates(prev => ({
         ...prev,
@@ -323,7 +334,7 @@ export default function DocumentChat() {
               <div className="space-y-6">
                 {messages.map((message, index) => (
                   <div key={message.id}>
-                    <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""} ${messageStates[message.id]?.isStopped ? "hidden" : ""}`}>
                       {message.role === "assistant" && (
                         <img
                           src={avatar || "/placeholder.svg"}
@@ -344,10 +355,32 @@ export default function DocumentChat() {
                             <div className="flex items-center gap-2">
                               <div
                                 className="break-words max-w-full"
-                                dangerouslySetInnerHTML={{
-                                  __html: message.content || ""
-                                }}
-                              />
+                              >
+                                {message.parts.map((part, index) => {
+                                  // text parts:
+                                  if (part.type === 'text') {
+                                    return <div key={index}>{part.text}</div>;
+                                  }
+                                  // reasoning parts:
+                                  if (part.type === 'reasoning') {
+                                    return (
+                                      <div key={index} className="my-2 text-xs text-[#8b8b8b]">
+                                        <div className="text-[#8b8b8b] bg-gray-200 rounded-xl pr-3 pl-3 pt-1 pb-1 flex items-center gap-1 w-23"
+                                          onClick={() => toggleReasoning(index.toString())}>
+                                          {status == "ready" ? f({ id: "common.thinking.details" }) : f({ id: "common.thinking" })}{collapsedReasonings[index.toString()] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                        </div>
+                                        {!collapsedReasonings[index.toString()] && (
+                                          <pre key={index} className="text-xs text-gray-400 p-2 rounded-md overflow-x-auto whitespace-pre-wrap border-l-4 border-gray-400 my-2">
+                                            {part.details.map(detail =>
+                                              detail.type === 'text' ? detail.text : '<redacted>',
+                                            )}
+                                          </pre>
+                                        )}
+                                      </div>
+                                    )
+                                  }
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -379,47 +412,46 @@ export default function DocumentChat() {
                         </div>
                       )}
                     {/* 错误和中断状态 */}
-                    {((messageStates[message.id]?.isError || messageStates[message.id]?.isStopped) &&
-                      message.role === "user") && (
-                        <div className="flex gap-3 mt-2">
-                          <div className="flex items-center max-w-full">
-                            <img
-                              src={avatar || "/placeholder.svg"}
-                              alt="Chat Icon"
-                              width={28}
-                              height={28}
-                              className="object-cover flex-shrink-0 self-start"
-                            />
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
-                                <Info className="w-4 h-4 text-[#f93a37]" />
-                                {messageStates[message.id]?.isError ? f({ id: "chat.error" }) : f({ id: "chat.retry" })}
-                              </div>
-                              <div className="flex items-center gap-1 ml-3">
-                                <button className="p-1 hover:bg-gray-100 rounded">
-                                  <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
-                                </button>
-                                {
-                                  index === messages.length - 1 && (
-                                    <button
-                                      onClick={() => {
-                                        reload()
-                                        setMessageStates(prev => ({
-                                          ...prev,
-                                          [message.id]: { isError: false, isStopped: false }
-                                        }));
-                                      }}
-                                      className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm"
-                                    >
-                                      <RefreshCcw className="w-4 h-4" />
-                                    </button>
-                                  )
-                                }
-                              </div>
+                    {((messageStates[message.id]?.isError || messageStates[message.id]?.isStopped)) && (
+                      <div className="flex gap-3 mt-2">
+                        <div className="flex items-center max-w-full">
+                          <img
+                            src={avatar || "/placeholder.svg"}
+                            alt="Chat Icon"
+                            width={28}
+                            height={28}
+                            className="object-cover flex-shrink-0 self-start"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
+                              <Info className="w-4 h-4 text-[#f93a37]" />
+                              {messageStates[message.id]?.isError ? f({ id: "chat.error" }) : f({ id: "chat.retry" })}
+                            </div>
+                            <div className="flex items-center gap-1 ml-3">
+                              <button className="p-1 hover:bg-gray-100 rounded">
+                                <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
+                              </button>
+                              {
+                                index === messages.length - 1 && (
+                                  <button
+                                    onClick={() => {
+                                      reload()
+                                      setMessageStates(prev => ({
+                                        ...prev,
+                                        [message.id]: { isError: false, isStopped: false }
+                                      }));
+                                    }}
+                                    className="text-gray-500 hover:bg-gray-100 rounded-md p-1 text-sm"
+                                  >
+                                    <RefreshCcw className="w-4 h-4" />
+                                  </button>
+                                )
+                              }
                             </div>
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div ref={messagesEndRef} />

@@ -87,9 +87,9 @@ func FormatDataContent(data string, dataType StreamPartType) string {
 	case TextPart:
 		return fmt.Sprintf("0:\"%s\"\n", data)
 	case ReasoningPart:
-		return fmt.Sprintf("g:%s\n", data)
+		return fmt.Sprintf("g:\"%s\"\n", data)
 	case RedactedReasoningPart:
-		return fmt.Sprintf("i:%s\n", data)
+		return fmt.Sprintf("i:{\"data\":\"%s\"}\n", data)
 	case ReasoningSignaturePart:
 		return fmt.Sprintf("j:%s\n", data)
 	case SourcePart:

@@ -68,4 +68,6 @@ export default {
   "common.copy.success": "Copied to clipboard",
   "common.retry": "Retry",
   "common.loading": "Loading...",
+  "common.thinking": "Thinking...",
+  "common.thinking.details": "Thinking process",
 };
