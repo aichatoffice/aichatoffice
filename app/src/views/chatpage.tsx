@@ -334,8 +334,8 @@ export default function DocumentChat() {
               <div className="space-y-6">
                 {messages.map((message, index) => (
                   <div key={message.id}>
-                    <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""} ${messageStates[message.id]?.isStopped ? "hidden" : ""}`}>
-                      {message.role === "assistant" && (
+                    <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
+                      {message.role === "assistant" && !(messageStates[message.id]?.isStopped || messageStates[message.id]?.isError) && (
                         <img
                           src={avatar || "/placeholder.svg"}
                           alt="Chat Icon"
@@ -344,7 +344,7 @@ export default function DocumentChat() {
                           className="object-cover flex-shrink-0 self-start"
                         />
                       )}
-                      <div className={`space-y-1 ${message.role === "user" ? "items-end" : ""} max-w-[calc(100%-40px)]`}>
+                      <div className={`space-y-1 ${message.role === "user" ? "items-end" : ((messageStates[message.id]?.isStopped || messageStates[message.id]?.isError) ? "hidden" : "")} max-w-[calc(100%-40px)]`}>
                         <div
                           className={`rounded-2xl p-3 max-w-full ${message.role === "user"
                             ? "bg-[#364153] text-white overflow-hidden"
@@ -357,27 +357,47 @@ export default function DocumentChat() {
                                 className="break-words max-w-full"
                               >
                                 {message.parts.map((part, index) => {
-                                  // text parts:
-                                  if (part.type === 'text') {
-                                    return <div key={index}>{part.text}</div>;
-                                  }
-                                  // reasoning parts:
-                                  if (part.type === 'reasoning') {
-                                    return (
-                                      <div key={index} className="my-2 text-xs text-[#8b8b8b]">
-                                        <div className="text-[#8b8b8b] bg-gray-200 rounded-xl pr-3 pl-3 pt-1 pb-1 flex items-center gap-1 w-23"
-                                          onClick={() => toggleReasoning(index.toString())}>
-                                          {status == "ready" ? f({ id: "common.thinking.details" }) : f({ id: "common.thinking" })}{collapsedReasonings[index.toString()] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  switch (part.type) {
+                                    case 'text':
+                                      return <div key={index}>{part.text}</div>;
+                                    case 'reasoning':
+                                      return (
+                                        <div key={index} className="my-2 text-xs text-[#8b8b8b]">
+                                          <div className="text-[#8b8b8b] bg-gray-200 rounded-xl pr-3 pl-3 pt-1 pb-1 flex items-center gap-1 w-23"
+                                            onClick={() => toggleReasoning(index.toString())}>
+                                            {f({ id: "common.thinking.details" })}{collapsedReasonings[index.toString()] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                          </div>
+                                          {!collapsedReasonings[index.toString()] && (
+                                            <div>
+                                              <pre className="text-xs text-gray-400 p-2 rounded-md overflow-x-auto whitespace-pre-wrap border-l-4 border-gray-400 my-2">
+                                                {part.details.map((detail, i) => {
+                                                  switch (detail.type) {
+                                                    case 'text':
+                                                      return (
+                                                        <div key={i}>
+                                                          {detail.text}
+                                                          {detail.signature && (
+                                                            <div className="text-xs text-gray-500 mt-1 italic border-t border-gray-200 pt-1">
+                                                              {detail.signature}
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      );
+                                                    case 'redacted':
+                                                      return <div key={i} className="inline-block">{detail.data}</div>;
+                                                    default:
+                                                      return null;
+                                                  }
+                                                })}
+                                              </pre>
+                                            </div>
+                                          )}
                                         </div>
-                                        {!collapsedReasonings[index.toString()] && (
-                                          <pre key={index} className="text-xs text-gray-400 p-2 rounded-md overflow-x-auto whitespace-pre-wrap border-l-4 border-gray-400 my-2">
-                                            {part.details.map(detail =>
-                                              detail.type === 'text' ? detail.text : '<redacted>',
-                                            )}
-                                          </pre>
-                                        )}
-                                      </div>
-                                    )
+                                      )
+                                    case 'source':
+                                      return <a key={index} href={part.source.url} target="_blank" className="text-blue-500">{part.source.url}</a>;
+                                    default:
+                                      return null;
                                   }
                                 })}
                               </div>

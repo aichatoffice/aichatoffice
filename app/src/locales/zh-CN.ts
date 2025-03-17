@@ -68,6 +68,5 @@ export default {
   "common.copy.success": "已复制到剪贴板",
   "common.retry": "重试",
   "common.loading": "加载中...",
-  "common.thinking": "思考中...",
-  "common.thinking.details": "思考过程",
+  "common.thinking.details": "推理过程",
 }

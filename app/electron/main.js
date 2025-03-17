@@ -189,12 +189,12 @@ function getServerPaths() {
   if (process.arch === "x64") {
     // x86_64
     aichatofficeExec = "aichatoffice-x64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026896&Signature=ieYyg3l8UEIQqhg26f050xqXaFc%3D"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773313360&Signature=t9QUmB6Jhv2%2BrXU%2BkRsPW5CE/8o%3D"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026774&Signature=RICIlLM5vBJVns2YtNp%2Bsw8fqg4%3D"
   } else if (process.arch === "arm64") {
     // arm64
     aichatofficeExec = "aichatoffice-arm64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026911&Signature=Af1NEfem9s0FqMwP6cybjwZTBtA%3D"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773313458&Signature=EEk8z0JIjafKIf9WXltXVLhbOhI%3D"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
   } else {
     throw new Error("Unsupported architecture: " + process.arch)

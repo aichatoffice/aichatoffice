@@ -93,13 +93,13 @@ func FormatDataContent(data string, dataType StreamPartType) string {
 	case ReasoningSignaturePart:
 		return fmt.Sprintf("j:%s\n", data)
 	case SourcePart:
-		return fmt.Sprintf("h:%s\n", data)
+		return fmt.Sprintf("h:{\"url\":\"%s\"}\n", data)
 	case DataPart:
 		return fmt.Sprintf("2:%s\n", data)
 	case MessageAnnotationPart:
 		return fmt.Sprintf("8:%s\n", data)
 	case ErrorPart:
-		return fmt.Sprintf("3:%s\n", data)
+		return fmt.Sprintf("3:\"%s\"\n", data)
 	case ToolCallStreamingStartPart:
 		return fmt.Sprintf("b:%s\n", data)
 	case ToolCallDeltaPart:
@@ -121,6 +121,32 @@ func FormatDataContent(data string, dataType StreamPartType) string {
 
 // -------- 以下测试
 func GenTestStreamData(dataType StreamPartType, event chan string) {
+	// 单独处理推理签名部分 (需要现有推理数据, 然后生成签名)
+	if dataType == ReasoningSignaturePart {
+		go func() {
+			defer close(event)
+			textContent := "This is an AI-generated response with reasoning."
+			event <- FormatDataContent(textContent, TextPart)
+			time.Sleep(time.Duration(rand.Intn(400)+100) * time.Millisecond)
+			reasoningContent := "Analyzing the given problem, considering possible solutions..."
+			event <- FormatDataContent(reasoningContent, ReasoningPart)
+			time.Sleep(time.Duration(rand.Intn(400)+100) * time.Millisecond)
+			signatureContent := `{"signature": "abc123xyz", "model": "gpt-4-turbo", "confidence": 0.98, "verified": true}`
+			event <- FormatDataContent(signatureContent, ReasoningSignaturePart)
+		}()
+		return
+	} else if dataType == DataPart {
+		// 数据部分 数组一起返回
+		go func() {
+			defer close(event)
+			dataContent := GenTestData(dataType)
+			event <- FormatDataContent(dataContent, dataType)
+			// 添加一个短暂延迟确保数据被处理
+			time.Sleep(100 * time.Millisecond)
+		}()
+		return
+	}
+
 	dataContent := GenTestData(dataType)
 
 	// 把内容分段，每段随机 8-12 个字符，直至内容全部输出
@@ -157,16 +183,9 @@ func GenTestData(dataType StreamPartType) string {
 	case ReasoningSignaturePart:
 		return "Reasoning process completed by Model-XYZ v2.1 with confidence score 0.92 and verification status: passed"
 	case SourcePart:
-		return "Source: https://example.com/documentation/api/v2\nTitle: API Reference Guide\nRetrieved: 2023-05-15\nRelevance Score: 0.89"
+		return "https://example.com"
 	case DataPart:
-		return `{
-  "results": [
-    {"id": "item_123", "name": "Product A", "price": 29.99, "available": true},
-    {"id": "item_456", "name": "Product B", "price": 49.99, "available": false},
-    {"id": "item_789", "name": "Product C", "price": 19.99, "available": true}
-  ],
-  "pagination": {"total": 42, "page": 1, "per_page": 3}
-}`
+		return `[{"id":"item_123","name":"Product A","price":29.99}]`
 	case MessageAnnotationPart:
 		return `{
   "annotation_id": "ann_123456",
@@ -180,7 +199,7 @@ func GenTestData(dataType StreamPartType) string {
   }
 }`
 	case ErrorPart:
-		return "Error code: 503\nMessage: Service temporarily unavailable\nDetails: The requested model is currently experiencing high demand. Please retry your request in a few minutes."
+		return "Error code: 503; Message: Service temporarily unavailable; Details: The requested model is currently experiencing high demand. Please retry your request in a few minutes."
 	case ToolCallStreamingStartPart:
 		return `{
   "tool_call_id": "call_abc123def456",
