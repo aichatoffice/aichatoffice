@@ -166,22 +166,31 @@ func UploadComplete(c *gin.Context) {
 	})
 }
 
+// OpenAIConfig 定义OpenAI配置结构
+type OpenAIConfig struct {
+	LLM []LLMConfig `toml:"llm"`
+}
+
+// LLMConfig 定义LLM配置结构
+type LLMConfig struct {
+	BaseUrl        string `toml:"baseUrl"`
+	TextModel      string `toml:"textModel"`
+	Token          string `toml:"token"`
+	Name           string `toml:"name"`
+	ProxyUrl       string `toml:"proxyUrl"`
+	Subservice     string `toml:"subservice"`
+	InputMaxToken  int    `toml:"inputMaxToken"`
+	OutputMaxToken int    `toml:"outputMaxToken"`
+}
+
 func AIConfig(c *gin.Context) {
+	openaiConfig := OpenAIConfig{}
+	econf.UnmarshalKey("openai", &openaiConfig)
+
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": gin.H{
-			"llmList": []gin.H{
-				{
-					"baseUrl":        econf.GetString("openai.llm.baseUrl"),
-					"textModel":      econf.GetString("openai.llm.textModel"),
-					"token":          econf.GetString("openai.llm.token"),
-					"name":           econf.GetString("openai.llm.name"),
-					"proxyUrl":       econf.GetString("openai.llm.proxyUrl"),
-					"subservice":     econf.GetString("openai.llm.subservice"),
-					"inputMaxToken":  econf.GetInt("openai.llm.inputMaxToken"),
-					"outputMaxToken": econf.GetInt("openai.llm.outputMaxToken"),
-				},
-			},
+			"llmList": openaiConfig.LLM,
 		},
 	})
 }
