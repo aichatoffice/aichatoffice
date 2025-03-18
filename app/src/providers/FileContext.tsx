@@ -153,6 +153,134 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // 添加一个变量来存储当前活跃的请求ID
+  let activeRequestId: string | null = null;
+
+  const sendFileChatMessage = async (
+    conversation_id: string,
+    message: ChatMessageItem,
+    onNewMessage: (chunk: string) => void,
+    signal?: AbortSignal
+  ) => {
+    const processChunk = (chunk: string) => {
+      try {
+        if (chunk.startsWith('[{')) {
+          return;
+        }
+        if (chunk.startsWith('data: ')) {
+          const data = chunk.substring(6);
+          onNewMessage(data);
+        } else {
+          onNewMessage(chunk);
+        }
+      } catch (e) {
+        console.error('Error parsing chunk:', e);
+      }
+    };
+
+    if (!isElectron()) {
+      const response = await apiRequest({
+        method: 'POST',
+        path: `/api/chatv2/${conversation_id}/chat`,
+        body: JSON.stringify(message),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal,
+        isStream: true
+      });
+
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        // 将接收到的chunk按换行符分割，逐行处理
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.trim()) {  // 忽略空行
+            processChunk(line);
+          }
+        }
+      }
+    } else {
+      try {
+        const response = await apiRequest({
+          method: 'POST',
+          path: `/api/chat/${conversation_id}/chat`,
+          body: message,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal,
+          isStream: true
+        });
+
+        if (response?.requestId) {
+          activeRequestId = response.requestId;
+          const ipcRenderer = getIpcRenderer();
+          if (!ipcRenderer) {
+            throw new Error('IPC renderer not available');
+          }
+
+          if (signal) {
+            // 监听信号
+            signal.addEventListener('abort', async () => {
+              if (activeRequestId) {
+                try {
+                  await ipcRenderer.invoke('cancel-request', activeRequestId);
+                  activeRequestId = null;
+                } catch (error) {
+                  console.error('Error during abort:', error);
+                }
+              }
+            });
+          }
+
+          try {
+            while (true) {
+              const { value, done } = await ipcRenderer.invoke('read-stream', response.requestId);
+              if (done) break;
+              processChunk(value);
+            }
+          } catch (error) {
+            console.error('Stream reading error:', error);
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error('Error in sendFileChatMessage:', error);
+        throw error;
+      } finally {
+        activeRequestId = null;
+      }
+    }
+  };
+
+  const breakFileChat = async (conversationId: string) => {
+    if (!isElectron()) {
+      const response = await fetch(`/api/chat/${conversationId}/break`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to break chat');
+      }
+    } else {
+      try {
+        const ipcRenderer = getIpcRenderer();
+        if (ipcRenderer) {
+          await ipcRenderer.invoke('break-file-chat', conversationId);
+        }
+      } catch (error) {
+        console.error('Break chat failed:', error);
+        throw error;
+      }
+    }
+  }
+
   useEffect(() => {
     getFile()
   }, [])

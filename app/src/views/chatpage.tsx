@@ -85,6 +85,12 @@ export default function DocumentChat() {
     // 添加状态避免初始化时创建两次聊天
     let isSubscribed = true;
     async function initChat() {
+      // todo 测试
+      const id = await createFileChat();
+      if (!isSubscribed) return;
+      setConversationId(id);
+
+      setMessages([])
       setPreviewUrl("")
       setPdfData(null)
       if (!documentId) return;
@@ -99,16 +105,18 @@ export default function DocumentChat() {
           setConversationId(id);
         }
       } else {
+
+
         try {
           const url = await getPreviewUrl(documentId);
           if (!isSubscribed) return;
           setPreviewUrl(url || "");
 
-          if (url) {
-            const id = await createFileChat();
-            if (!isSubscribed) return;
-            setConversationId(id);
-          }
+          // if (url) {
+          // const id = await createFileChat();
+          // if (!isSubscribed) return;
+          // setConversationId(id);
+          // }
         } catch (error) {
           console.error('初始化聊天失败:', error);
         }
