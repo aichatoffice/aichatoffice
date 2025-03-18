@@ -194,7 +194,7 @@ function getServerPaths() {
   } else if (process.arch === "arm64") {
     // arm64
     aichatofficeExec = "aichatoffice-arm64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773313458&Signature=EEk8z0JIjafKIf9WXltXVLhbOhI%3D"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773399092&Signature=IRDOrmEH5cxPRg8L2f9U5xQdEUw%3D"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
   } else {
     throw new Error("Unsupported architecture: " + process.arch)
