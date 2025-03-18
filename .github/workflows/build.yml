@@ -28,12 +28,6 @@ jobs:
       release_version: ${{ steps.release_info.outputs.release_version }}
       version: ${{ steps.version.outputs.value }}
     steps:
-      - name: Delete old artifacts
-        uses: c-hive/gha-remove-artifacts@v1
-        with:
-          age: '1 day'
-          skip-recent: 3
-
       - name: Checkout code
         uses: actions/checkout@v4
 

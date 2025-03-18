@@ -15,7 +15,9 @@
     "electron-start": "NODE_ENV=development electron ./electron/main.js",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "npm run build && electron-builder --win",
-    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:mac-arm64": "npm run build && electron-builder --mac --arm64",
+    "electron:build:mac-x64": "npm run build && electron-builder --mac --x64",
+    "electron:build:mac-universal": "npm run build && electron-builder --mac --universal",
     "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
@@ -42,8 +44,16 @@
     "mac": {
       "icon": "public/logo.png",
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64",
+            "universal"
+          ]
+        }
       ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "identity": null,
       "hardenedRuntime": false
     },
@@ -62,6 +72,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.3",
+    "@ai-sdk/react": "^1.1.22",
     "@electron/remote": "^2.1.2",
     "@fontsource/open-sans": "^5.2.5",
     "@radix-ui/react-accordion": "^1.2.2",
@@ -92,6 +103,7 @@
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@tailwindcss/vite": "^4.0.7",
+    "ai": "^4.1.58",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
@@ -111,7 +123,9 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss": "^4.0.7",
     "tailwindcss-animate": "^1.0.7",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "yauzl": "^3.2.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

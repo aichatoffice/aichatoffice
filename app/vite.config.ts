@@ -23,6 +23,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     proxy: {
       '/showcase': {
         target: 'http://127.0.0.1:9001',  // 设置基础 URL

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
+import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
@@ -8,7 +8,6 @@ import { useIntl } from "react-intl"
 import { useFiles } from "@/providers/FileContext"
 import { useToast } from "@/components/ui/use-toast"
 import * as pdfjsLib from 'pdfjs-dist'
-import { PDFDocumentProxy } from 'pdfjs-dist'
 import Robot from "@/assets/robot.png"
 import { useChat } from '@ai-sdk/react';
 
@@ -21,16 +20,11 @@ export default function DocumentChat() {
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, createFileChat, getFileById, getServerUrl } = useFiles()
+  const { getPreviewUrl, createFileChat, getServerUrl } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [pdfData, setPdfData] = useState<Uint8Array | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null)
   const [showHint, setShowHint] = useState(true)
 
   const [serverUrl, setServerUrl] = useState("")
@@ -85,41 +79,21 @@ export default function DocumentChat() {
     // 添加状态避免初始化时创建两次聊天
     let isSubscribed = true;
     async function initChat() {
-      // todo 测试
-      const id = await createFileChat();
-      if (!isSubscribed) return;
-      setConversationId(id);
-
-      setMessages([])
       setPreviewUrl("")
-      setPdfData(null)
       if (!documentId) return;
-      const file = await getFileById(documentId);
       if (!isSubscribed) return;
-      if (file.type.includes("pdf")) {
-        if (file.content) {
-          setPdfData(base64ToUint8Array(file.content))
-          await renderPDF(base64ToUint8Array(file.content))
+      try {
+        const url = await getPreviewUrl(documentId);
+        if (!isSubscribed) return;
+        setPreviewUrl(url || "");
+
+        if (url) {
           const id = await createFileChat();
           if (!isSubscribed) return;
           setConversationId(id);
         }
-      } else {
-
-
-        try {
-          const url = await getPreviewUrl(documentId);
-          if (!isSubscribed) return;
-          setPreviewUrl(url || "");
-
-          // if (url) {
-          // const id = await createFileChat();
-          // if (!isSubscribed) return;
-          // setConversationId(id);
-          // }
-        } catch (error) {
-          console.error('初始化聊天失败:', error);
-        }
+      } catch (error) {
+        console.error('初始化聊天失败:', error);
       }
     }
     initChat();
@@ -129,62 +103,8 @@ export default function DocumentChat() {
     };
   }, [documentId]);
 
-  // 渲染 PDF
-  const renderPDF = async (pdfData: Uint8Array) => {
-    try {
-      // 直接使用 Uint8Array 数据加载 PDF
-      const loadingTask = pdfjsLib.getDocument({ data: pdfData })
-      const pdf = await loadingTask.promise
-      setPdfDoc(pdf)
-      setTotalPages(pdf.numPages)
-      await renderPage(1, pdf)
-    } catch (error) {
-      console.error('PDF 加载失败:', error)
-    }
-  }
-
-  const renderPage = async (pageNum: number, doc: PDFDocumentProxy) => {
-    if (!canvasRef.current) return
-
-    const page = await doc.getPage(pageNum)
-    const canvas = canvasRef.current
-    const context = canvas.getContext('2d')
-
-    const viewport = page.getViewport({ scale: 1.5 })
-    canvas.height = viewport.height
-    canvas.width = viewport.width
-
-    const renderContext = {
-      canvasContext: context!,
-      viewport: viewport
-    }
-
-    await page.render(renderContext).promise
-  }
-
-  // 将 base64 字符串转换为 Uint8Array
-  const base64ToUint8Array = (base64: string) => {
-    // 移除 base64 字符串中的 data URI 头部（如果有）
-    const base64Clean = base64.replace(/^data:.*,/, '')
-    // 解码 base64 为二进制字符串
-    const binaryString = window.atob(base64Clean)
-    // 创建 Uint8Array
-    const bytes = new Uint8Array(binaryString.length)
-    // 将每个字符的 ASCII 码存入 Uint8Array
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    return bytes
-  }
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
-  const changePage = async (newPage: number) => {
-    if (!pdfDoc || newPage < 1 || newPage > totalPages) return
-    setCurrentPage(newPage)
-    await renderPage(newPage, pdfDoc)
   }
 
   // 添加自动隐藏效果
@@ -226,33 +146,6 @@ export default function DocumentChat() {
           {/* {previewUrl} */}
           {previewUrl ? (
             <iframe src={previewUrl} className="w-full h-full" />
-          ) : pdfData ? (
-            <div className="w-full h-full overflow-auto flex flex-col items-center">
-              <canvas ref={canvasRef} className="h-[calc(100%-55px)] max-w-full" />
-              {totalPages > 0 && (
-                <div className="flex items-center gap-2 mt-2 mb-2 text-sm">
-                  <Button
-                    onClick={() => changePage(currentPage - 1)}
-                    disabled={currentPage <= 1}
-                    size="sm"
-                    className="bg-gray-100 hover:bg-gray-200"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-gray-600">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    onClick={() => changePage(currentPage + 1)}
-                    disabled={currentPage >= totalPages}
-                    size="sm"
-                    className="bg-gray-200 hover:bg-gray-300"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500">{f({ id: "common.loading" })}</div>
           )}

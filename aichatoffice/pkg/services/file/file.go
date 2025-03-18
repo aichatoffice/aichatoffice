@@ -56,9 +56,9 @@ func (f *FileService) InitCaseFile() {
 			Type:       mimetype.Detect(data).String(),
 		})
 		if err != nil {
-			elog.Panic(fmt.Sprintf("存储文件 %s 到LevelDB 失败: %v", path, err))
+			elog.Panic(fmt.Sprintf("存储文件 %s 到Store 失败: %v", path, err))
 		} else {
-			fmt.Printf("文件 %s 内容已存储到LevelDB。\n", path)
+			fmt.Printf("文件 %s 内容已存储到Store。\n", path)
 		}
 		return nil
 	})

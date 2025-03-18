@@ -36,6 +36,10 @@ func (s *SqliteStore) DeleteFile(ctx context.Context, fileID string) error {
 
 func (s *SqliteStore) GetFilesList(ctx context.Context) (files []dto.File, err error) {
 	//TODO 优化
-	err = s.DB.Find(&files).Where("file_id NOT LIKE ?", "%custom_tool%").Where("file_id NOT LIKE ?", "%ai%").Where("file_id NOT LIKE ?", "%convert_%").Where("file_id NOT LIKE ?", "%case_%").Error
+	err = s.DB.Where("file_id NOT LIKE ?", "%custom_tool%").
+		Where("file_id NOT LIKE ?", "%ai%").
+		Where("file_id NOT LIKE ?", "%convert_%").
+		Where("file_id NOT LIKE ?", "%case_%").
+		Find(&files).Error
 	return files, err
 }

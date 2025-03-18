@@ -34,6 +34,7 @@ func Init() (err error) {
 	}
 
 	FileService = filesvc.NewFileService(FileStore)
+	FileService.InitCaseFile()
 	aiSvc := aisvc.NewAiWrapper()
 	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc)
 	return nil

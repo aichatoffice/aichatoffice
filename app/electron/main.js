@@ -189,8 +189,8 @@ function getServerPaths() {
   if (process.arch === "x64") {
     // x86_64
     aichatofficeExec = "aichatoffice-x64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773313360&Signature=t9QUmB6Jhv2%2BrXU%2BkRsPW5CE/8o%3D"
-    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026774&Signature=RICIlLM5vBJVns2YtNp%2Bsw8fqg4%3D"
+    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773393716&Signature=wjABLOsrtiP9Sv2Knk%2BSmLJB1lI%3D"
+    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773394062&Signature=LAS74eI0oE2Dkqu5bTbA5pFWIn8%3D"
   } else if (process.arch === "arm64") {
     // arm64
     aichatofficeExec = "aichatoffice-arm64"
@@ -750,12 +750,20 @@ enableAccessInterceptor = true
 enableAccessInterceptorRes = true
 embedPath = "dist"
 
+[store]
+type = "sqlite"
+enableExpireJob = true
+expireJobInterval = "5s"
+
 [logger]
 # dir = "${logsDir}"
 writer = "stdout"
 
-[leveldb]
-path = "${path.join(confDir, "leveldbstore")}"
+#[leveldb]
+#path = "${path.join(confDir, "leveldbstore")}"
+
+[sqlite]
+path = "${path.join(confDir, "sqlite")}"
 
 [host]
 downloadUrlPrefix = "${localServer}:${kernelPort}"
@@ -771,14 +779,22 @@ timeout = 300
 convertedTextDir = "converted"
 
 [openai]
+[openai.llm]
 configMode = "local"                                         # local 本地配置，remote 远程回调配置
 baseUrl = "https://api.siliconflow.cn/v1"
 textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 token = "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz"
+# baseUrl = "https://api.deepseek.com/v1"
+# textModel = "deepseek-chat"
+# token = "sk-a35b80c0627c49f49bbbaf9a1e3e70e2"
+# baseUrl = "https://xiaoai.plus/v1"
+# textModel = "gpt-4-32k"
+# textModel = "deepseek-v3"
+# token = "sk-an0ttsr7hLww289uEaK819A57MnUkflvFXeBAvjUhHc0Pxwq"
 name = ""
 proxyUrl = ""
 subservice = ""
-inputMaxToken = 1000
+inputMaxToken = 10000
 outputMaxToken = 10000
 `
 
@@ -791,7 +807,7 @@ outputMaxToken = 10000
   return configPath
 }
 
-// 生成运行时 客户客户端配置文件
+// 生成运行时 SDK配置文件
 function generateSDKRuntimeConfig() {
   // 创建配置文件目录
   const configDir = path.join(confDir, "SDKconfig");
@@ -847,6 +863,7 @@ lizard-service-sheet-sdk = ["assets", "service.scripts", "service.styles"]
 
 [preview.convert]
 tmpDir = "${path.join(confDir, "tmp")}"
+configPath = "${path.join(configDir, "config.toml")}"
 
 [preview.watermark.copyright]
 enable = true
@@ -990,6 +1007,9 @@ async function waitForServerReady(process, serverType) {
     const timeout = setTimeout(() => {
       if (!isStarted) {
         writeLog(`${serverType} 启动超时`);
+        showErrorWindow("⚠️ Server startup failed",
+          `<div>服务程序启动超时,请检查网络连接后重试。</div>
+           <div><i>${error.message}</i></div>`);
         process.kill();
         resolve(false);
       }
@@ -999,7 +1019,7 @@ async function waitForServerReady(process, serverType) {
       const output = data.toString();
       writeLog(`${serverType} stdout: ${output}`);
       // if ((serverType == 'kernel' && output.includes('server')) || (serverType == 'SDK' && output.includes(localServer))) {
-      if (output.includes('server')) {
+      if (output.includes('server') || output.includes('resource')) {
         isStarted = true;
         clearTimeout(timeout);
         resolve(true);
