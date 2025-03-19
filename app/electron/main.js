@@ -30,6 +30,7 @@ let openAsHidden = false
 // 根据不同环境下载对应执行包 x86_64
 // 执行包
 let turbooneExec = "turboone"
+let aichatofficeExec = "aichatoffice-x64"
 // 执行包下载地址
 let turbooneExecUrl = ""
 
@@ -186,16 +187,18 @@ function getServerPaths() {
   // 根据不同环境下载对应执行包 
   if (process.arch === "x64") {
     // x86_64
+    aichatofficeExec = "aichatoffice-x64"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773394062&Signature=LAS74eI0oE2Dkqu5bTbA5pFWIn8%3D"
   } else if (process.arch === "arm64") {
     // arm64
+    aichatofficeExec = "aichatoffice-arm64"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
   } else {
     throw new Error("Unsupported architecture: " + process.arch)
   }
   const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
   return {
-    serverPath: path.join(basePath, 'aichatoffice'),
+    serverPath: path.join(basePath, aichatofficeExec),
     sdkServerPath: path.join(basePath, turbooneExec)
   };
 }

@@ -66,14 +66,14 @@ jobs:
             name: macOS Build (x64)
             electron_args: "electron:build:mac-x64"
             go_args: "build-darwin-x64"
-            artifact_path: "app/dist_electron/*.dmg"
+            artifact_path: "app/dist_electron/*-x64.dmg"
             suffix: "x64.dmg"
             
           - os: macos-latest
             name: macOS Build (arm64)
             electron_args: "electron:build:mac-arm64"
             go_args: "build-darwin-arm64"
-            artifact_path: "app/dist_electron/*.dmg"
+            artifact_path: "app/dist_electron/*-arm64.dmg"
             suffix: "arm64.dmg"
 
     steps:

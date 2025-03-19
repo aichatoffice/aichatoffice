@@ -19,17 +19,18 @@ build:
 build-darwin-arm64:
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>building for macOS arm64<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 	@chmod +x $(SCRIPT_PATH)/build/*.sh
-	@cd $(APP_PATH) && GOOS=darwin GOARCH=arm64 $(SCRIPT_PATH)/build/gobuild.sh $(APP_NAME) $(ELECTRON_SERVER_PATH)/$(APP_NAME)
-	@echo "Build complete: $(ELECTRON_SERVER_PATH)/$(APP_NAME) 	\n"
+	@cd $(APP_PATH) && GOOS=darwin GOARCH=arm64 $(SCRIPT_PATH)/build/gobuild.sh $(APP_NAME) $(ELECTRON_SERVER_PATH)/$(APP_NAME)-arm64
+	@echo "Build complete: $(ELECTRON_SERVER_PATH)/$(APP_NAME)-arm64 	\n"
 
 # 为 macOS x64 构建
 build-darwin-x64:
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>building for macOS x64<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 	@chmod +x $(SCRIPT_PATH)/build/*.sh
-	@cd $(APP_PATH) && GOOS=darwin GOARCH=amd64 $(SCRIPT_PATH)/build/gobuild.sh $(APP_NAME) $(ELECTRON_SERVER_PATH)/$(APP_NAME)
-	@echo "Build complete: $(ELECTRON_SERVER_PATH)/$(APP_NAME) 	\n"
+	@cd $(APP_PATH) && GOOS=darwin GOARCH=amd64 $(SCRIPT_PATH)/build/gobuild.sh $(APP_NAME) $(ELECTRON_SERVER_PATH)/$(APP_NAME)-x64
+	@echo "Build complete: $(ELECTRON_SERVER_PATH)/$(APP_NAME)-x64 	\n"
 
 # 清理构建文件
 clean:
-	@rm -f $(ELECTRON_SERVER_PATH)/$(APP_NAME)
+	@rm -f $(ELECTRON_SERVER_PATH)/$(APP_NAME)-arm64
+	@rm -f $(ELECTRON_SERVER_PATH)/$(APP_NAME)-x64
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Cleaned build files<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
