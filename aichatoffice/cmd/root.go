@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 
-	_ "git.shimo.im/gopkg/mego/mconf"
 	"github.com/spf13/cobra"
 )
 
