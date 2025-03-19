@@ -196,10 +196,13 @@ function getServerPaths() {
   } else {
     throw new Error("Unsupported architecture: " + process.arch)
   }
-  const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
+  // server服务打入了eletron包内
+  const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(process.resourcesPath, "electron", "server");
+  // sdk服务在外部configDir下
+  const sdkBasePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
   return {
     serverPath: path.join(basePath, aichatofficeExec),
-    sdkServerPath: path.join(basePath, turbooneExec)
+    sdkServerPath: path.join(sdkBasePath, turbooneExec)
   };
 }
 
