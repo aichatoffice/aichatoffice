@@ -98,7 +98,16 @@ npm run build
 
 ### 依赖服务
 
-//TODO
+该项目的核心功能依赖以下两种外部服务，以下是它们需要实现的功能：
+
+#### 文档处理服务
+
+- 预览文档
+- 获取文档内容
+
+#### 大模型服务
+
+- 兼容 openai 协议的大语言模型
 
 ## 疑问解答
 
@@ -114,12 +123,12 @@ xattr -cr /Applications/AIChatOffice.app
 
 ## 📖 文档
 
-详细文档请查看 [Wiki](https://github.com/yourusername/aichatoffice/wiki)
+//TODO 详细文档请查看 [Wiki](https://github.com/yourusername/aichatoffice/wiki)
 
-- [部署指南](docs/deployment.md)
-- [开发指南](docs/development.md)
-- [API 文档](docs/api.md)
-- [贡献指南](CONTRIBUTING.md)
+//TODO - [部署指南](docs/deployment.md)
+//TODO - [开发指南](docs/development.md)
+//TODO - [API 文档](docs/api.md)
+//TODO - [贡献指南](CONTRIBUTING.md)
 
 ## 🤝 贡献
 
@@ -140,10 +149,11 @@ xattr -cr /Applications/AIChatOffice.app
 
 感谢以下开源项目：
 
+- [EGO](https://github.com/gotomicro/ego)
+- [Vercel-AI-SDK](https://github.com/vercel/ai)
 - [Electron](https://www.electronjs.org/)
 - [React](https://reactjs.org/)
 - [Gin](https://gin-gonic.com/)
-- [EGO](https://github.com/gotomicro/ego)
 - [TailwindCSS](https://tailwindcss.com/)
 
 ## 📞 联系我们
