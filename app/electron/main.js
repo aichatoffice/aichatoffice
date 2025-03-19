@@ -29,10 +29,8 @@ let bootWindow
 let openAsHidden = false
 // 根据不同环境下载对应执行包 x86_64
 // 执行包
-let aichatofficeExec = ""
 let turbooneExec = "turboone"
 // 执行包下载地址
-let aichatofficeExecUrl = ""
 let turbooneExecUrl = ""
 
 let workspaces = []
@@ -188,35 +186,26 @@ function getServerPaths() {
   // 根据不同环境下载对应执行包 
   if (process.arch === "x64") {
     // x86_64
-    aichatofficeExec = "aichatoffice-x64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-x64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773393716&Signature=wjABLOsrtiP9Sv2Knk%2BSmLJB1lI%3D"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-x64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773394062&Signature=LAS74eI0oE2Dkqu5bTbA5pFWIn8%3D"
   } else if (process.arch === "arm64") {
     // arm64
-    aichatofficeExec = "aichatoffice-arm64"
-    aichatofficeExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/aichatoffice-arm64?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773399092&Signature=IRDOrmEH5cxPRg8L2f9U5xQdEUw%3D"
     turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
   } else {
     throw new Error("Unsupported architecture: " + process.arch)
   }
   const basePath = isDevEnv ? path.join(appDir, "electron", "server") : path.join(confDir, "server");
   return {
-    serverPath: path.join(basePath, aichatofficeExec),
+    serverPath: path.join(basePath, 'aichatoffice'),
     sdkServerPath: path.join(basePath, turbooneExec)
   };
 }
 
 async function checkServerExecutables(serverPath, sdkServerPath) {
   // 分别检查每个可执行文件
-  const needsKernelDownload = !fs.existsSync(serverPath);
   const needsSDKDownload = !fs.existsSync(sdkServerPath);
 
-  if (needsKernelDownload || needsSDKDownload) {
+  if (needsSDKDownload) {
     try {
-      // 分别下载所需的可执行文件
-      if (needsKernelDownload) {
-        await downloadExecutable(aichatofficeExecUrl, serverPath, 'kernel');
-      }
       if (needsSDKDownload) {
         await downloadExecutable(turbooneExecUrl, sdkServerPath, 'sdk');
       }

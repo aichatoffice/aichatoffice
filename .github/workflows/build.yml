@@ -42,7 +42,6 @@ jobs:
         run: |
             echo "release_title=$(git show --format=%s --no-patch | head -1)" >> $GITHUB_OUTPUT
             echo "release_version=$(TZ=Asia/Shanghai date +'v%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-               EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
             echo "release_body=自动构建发布 $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Create Release
@@ -66,12 +65,14 @@ jobs:
           - os: macos-latest
             name: macOS Build (x64)
             electron_args: "electron:build:mac-x64"
+            go_args: "build-darwin-x64"
             artifact_path: "app/dist_electron/*.dmg"
             suffix: "x64.dmg"
             
           - os: macos-latest
             name: macOS Build (arm64)
             electron_args: "electron:build:mac-arm64"
+            go_args: "build-darwin-arm64"
             artifact_path: "app/dist_electron/*.dmg"
             suffix: "arm64.dmg"
 
@@ -85,6 +86,21 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: './app/package-lock.json'
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: ./aichatoffice/go.sum
+
+      - name: Clean previous build
+        run: make clean
+        working-directory: ./aichatoffice
+
+      - name: Build Go Program
+        run: make ${{ matrix.config.go_args }}
+        working-directory: ./aichatoffice
 
       - name: Install dependencies
         run: |
