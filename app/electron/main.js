@@ -192,7 +192,7 @@ function getServerPaths() {
   } else if (process.arch === "arm64") {
     // arm64
     aichatofficeExec = "aichatoffice-arm64"
-    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773026804&Signature=hO4hzRR0Z67vDD113MOB2whT3wU%3D"
+    turbooneExecUrl = "https://aichatoffice-test.obs.cn-north-4.myhuaweicloud.com:443/turboone-arm64.zip?AccessKeyId=4SI2S33CZY6DS2IUVYWT&Expires=1773478765&Signature=YYp2k4DDoZH9CxXStjV5mK6vlJc%3D"
   } else {
     throw new Error("Unsupported architecture: " + process.arch)
   }
@@ -774,6 +774,7 @@ timeout = 300
 convertedTextDir = "converted"
 
 [openai]
+aiIcon = "https://cdn-icons-png.flaticon.com/512/5278/5278402.png"
 [openai.llm]
 configMode = "local"                                         # local 本地配置，remote 远程回调配置
 baseUrl = "https://api.siliconflow.cn/v1"
