@@ -102,7 +102,7 @@ jobs:
         run: make ${{ matrix.config.go_args }}
         working-directory: ./aichatoffice
         env:
-          GOPROXY: https://goproxy.cn,direct
+          GOPROXY: https://proxy.golang.org,direct
           GO111MODULE: on
 
       - name: Install dependencies
