@@ -34,6 +34,7 @@ convertedTextDir = "converted"
 # token = "sk-a35b80c0627c49f49bbbaf9a1e3e70e2"
 
 [openai]
+aiIcon = "https://cdn-icons-png.flaticon.com/512/5278/5278402.png"
 [[openai.llm]]
 baseUrl = "https://api.siliconflow.cn/v1"
 textModel = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"

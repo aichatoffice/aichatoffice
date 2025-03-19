@@ -168,7 +168,8 @@ func UploadComplete(c *gin.Context) {
 
 // OpenAIConfig 定义OpenAI配置结构
 type OpenAIConfig struct {
-	LLM []LLMConfig `toml:"llm"`
+	AIIcon string      `toml:"aiIcon"`
+	LLM    []LLMConfig `toml:"llm"`
 }
 
 // LLMConfig 定义LLM配置结构
@@ -190,6 +191,7 @@ func AIConfig(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": gin.H{
+			"aiIcon":  openaiConfig.AIIcon,
 			"llmList": openaiConfig.LLM,
 		},
 	})

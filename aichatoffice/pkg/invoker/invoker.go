@@ -62,6 +62,7 @@ func initStore() (err error) {
 			return fmt.Errorf("service init sqlite failed: %w", err)
 		}
 		FileStore = sqlite
+		ChatStore = sqlite
 	default:
 		panic(fmt.Sprintf("store type %s not supported", econf.GetString("store.type")))
 	}
