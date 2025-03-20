@@ -29,6 +29,8 @@ export default function DocumentChat() {
 
   const [serverUrl, setServerUrl] = useState("")
 
+  const [currentInput, setCurrentInput] = useState("")
+
   // 添加新的状态来跟踪每条消息的状态
   const [messageStates, setMessageStates] = useState<{
     [key: string]: {
@@ -430,20 +432,25 @@ export default function DocumentChat() {
 
           {isChatOpen && (
             <div className="p-4 border-t border-gray-200">
-              <form onSubmit={handleSubmit} className="flex gap-2">
+              <form onSubmit={(e) => handleSubmit(e, {
+                body: {
+                  customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
+                }
+              })} className="flex gap-2">
                 <Input
                   placeholder={f({ id: "chat.placeholder" })}
                   name="prompt"
                   value={input}
                   onChange={(e) => {
                     handleInputChange(e);
+                    setCurrentInput(e.target.value)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
                       handleSubmit(e, {
                         body: {
-                          customKey: (input == "总结全文" || input == "summary") ? "summary" : ""
+                          customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
                         }
                       })
                     }
