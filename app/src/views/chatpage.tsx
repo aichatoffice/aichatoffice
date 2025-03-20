@@ -139,6 +139,49 @@ export default function DocumentChat() {
     stop();
   }
 
+  // 格式化文本
+  const formatMarkdownText = (text: string): string => {
+    let formattedText = text
+
+    // 去除最开头的空行
+    formattedText = formattedText.replace(/^[\s\n]+/, '')
+
+    // 处理数学公式部分保持不变
+    formattedText = formattedText
+      .replace(/\\\[([\s\S]*?)\\\]/g, '<div class="math-block">$1</div>')
+      .replace(/\\\((.*?)\\\)/g, '<span class="math-inline">$1</span>')
+
+    // 改进粗体处理逻辑，使用非贪婪匹配并处理嵌套情况
+    formattedText = formattedText
+      .replace(/\*\*((?:[^*]|\*(?!\*))+?)\*\*/g, '<strong>$1</strong>')  // 处理所有 **文本** 格式
+      .replace(/\*([^*]+?)\*/g, '<em>$1</em>')             // 处理斜体
+      .replace(/_([^_]+?)_/g, '<em>$1</em>')               // 处理下划线斜体
+
+    // 处理缩进和空格
+    formattedText = formattedText
+      .replace(/&nbsp;/g, ' ')
+      .replace(/^\s{2,}/gm, match => match.replace(/ /g, '&nbsp;'))
+
+    // 处理标题格式
+    formattedText = formattedText.replace(/^(#{1,6})\s+(.+)$/gm, '<h$1>$2</h$1>')
+
+    // 处理代码块和行内代码
+    formattedText = formattedText
+      .replace(/```(\w*)\n([\s\S]*?)\n```/g, '<pre><code class="language-$1">$2</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+
+    // 处理列表
+    formattedText = formattedText.replace(/^(\s*[-*]\s)/gm, match => match.replace(/ /g, '&nbsp;'))
+
+    // 处理链接
+    formattedText = formattedText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+
+    // 处理换行，但保留数学公式块的换行
+    formattedText = formattedText.replace(/(?<!<div class="math-block">[\s\S]*)\n(?![\s\S]*<\/div>)/g, '<br>')
+
+    return formattedText
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <div className="flex flex-1 overflow-hidden">
@@ -261,7 +304,7 @@ export default function DocumentChat() {
                                 {message.parts.map((part, index) => {
                                   switch (part.type) {
                                     case 'text':
-                                      return <div key={index}>{part.text}</div>;
+                                      return <div key={index} dangerouslySetInnerHTML={{ __html: formatMarkdownText(part.text) }}></div>;
                                     case 'reasoning':
                                       return (
                                         <div key={index} className="my-2 text-xs text-[#8b8b8b]">
