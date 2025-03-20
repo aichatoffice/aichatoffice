@@ -153,14 +153,12 @@ func Completions(ctx *gin.Context) {
 	}
 
 	// 最后一条里的content，作为输入内容
-	// content := chatRequest.Messages[len(chatRequest.Messages)-1].Content
-	// dataType := streaming.GetTypeByText(content)
-	// fmt.Print(dataType)
+	chatInput := chatRequest.Messages[len(chatRequest.Messages)-1].Content
 
 	event := make(chan string)
 
 	// 对接 openai 协议
-	go completions(event)
+	go completions(chatInput, event)
 
 	ctx.Stream(func(w io.Writer) bool {
 		e, ok := <-event
@@ -175,11 +173,9 @@ func Completions(ctx *gin.Context) {
 	})
 }
 
-func completions(event chan string) {
+func completions(chatInput string, event chan string) {
 	apiToken := `sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz`
 	modelName := `deepseek-ai/DeepSeek-R1-Distill-Llama-8B`
-
-	chatInput := `你是谁`
 
 	openaiConfig := openai.DefaultConfig(apiToken)
 	openaiConfig.BaseURL = `https://api.siliconflow.cn/v1`
