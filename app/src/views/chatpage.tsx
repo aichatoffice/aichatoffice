@@ -63,6 +63,7 @@ export default function DocumentChat() {
   useEffect(() => {
     if (error) {
       console.log("error", error)
+      console.log("messages", messages)
       const lastMessage = messages[messages.length - 1];
       setMessageStates(prev => ({
         ...prev,

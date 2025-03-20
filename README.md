@@ -3,7 +3,7 @@
 [中文](README.md) | [English](README_EN.md)
 
 <p align="center">
-  <img src="docs/images/logo.png" alt="AIChatOffice Logo" width="200"/>
+  <img src="docs/images/logo_1.svg" alt="AIChatOffice Logo" width="500"/>
 </p>
 
 <p align="center">

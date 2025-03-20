@@ -50,7 +50,7 @@ func ServeHTTP() *egin.Component {
 		chatRouters.GET("/:conversation_id", api.GetConversation)
 		chatRouters.DELETE("/:conversation_id", api.DeleteConversation)
 		chatRouters.POST("/:conversation_id/break", api.BreakConversation)
-		chatRouters.POST("/:conversation_id/chat", api.Chat) // todo summarize 是一种特殊的 chat
+		chatRouters.POST("/:conversation_id/chat", api.Chat)
 	}
 
 	chatV2Routers := apiGroup.Group("/chatv2")

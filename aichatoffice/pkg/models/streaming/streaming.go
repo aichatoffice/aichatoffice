@@ -3,6 +3,7 @@ package streaming
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -85,7 +86,9 @@ const (
 func FormatDataContent(data string, dataType StreamPartType) string {
 	switch dataType {
 	case TextPart:
-		return fmt.Sprintf("0:\"%s\"\n", data)
+		quotedData := strconv.Quote(data)
+		quotedData = quotedData[1 : len(quotedData)-1]
+		return fmt.Sprintf("0:\"%s\"\n", quotedData)
 	case ReasoningPart:
 		return fmt.Sprintf("g:\"%s\"\n", data)
 	case RedactedReasoningPart:

@@ -1,6 +1,7 @@
 package aiv2svc
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"github.com/gotomicro/cetus/l"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
+	"github.com/sashabaranov/go-openai"
 	goopenai "github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
 
@@ -100,7 +102,7 @@ type ChatRequest struct {
 	Stream      bool    `json:"stream,omitempty"`
 }
 
-func Completions(ctx *gin.Context) {
+func CompletionsTest(ctx *gin.Context) {
 	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	ctx.Writer.Header().Set("Cache-Control", "no-cache")
 	ctx.Writer.Header().Set("Connection", "keep-alive")
@@ -134,4 +136,88 @@ func Completions(ctx *gin.Context) {
 
 		return true
 	})
+}
+func Completions(ctx *gin.Context) {
+	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	ctx.Writer.Header().Set("Cache-Control", "no-cache")
+	ctx.Writer.Header().Set("Connection", "keep-alive")
+	ctx.Writer.Header().Set("Transfer-Encoding", "chunked")
+	ctx.Writer.Header().Set("x-vercel-ai-data-stream", "v1")
+
+	chatRequest := ChatRequest{}
+	err := ctx.ShouldBindJSON(&chatRequest)
+	if err != nil {
+		elog.Error("should bind json", zap.Error(err))
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 最后一条里的content，作为输入内容
+	// content := chatRequest.Messages[len(chatRequest.Messages)-1].Content
+	// dataType := streaming.GetTypeByText(content)
+	// fmt.Print(dataType)
+
+	event := make(chan string)
+
+	// 对接 openai 协议
+	go completions(event)
+
+	ctx.Stream(func(w io.Writer) bool {
+		e, ok := <-event
+		if !ok {
+			return false
+		}
+		elog.Info("chat event", zap.String("event", e))
+		ctx.Writer.WriteString(e)
+		w.(http.Flusher).Flush()
+
+		return true
+	})
+}
+
+func completions(event chan string) {
+	apiToken := `sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz`
+	modelName := `deepseek-ai/DeepSeek-R1-Distill-Llama-8B`
+
+	chatInput := `帮我生成一篇 300 字的科幻小说`
+
+	openaiConfig := openai.DefaultConfig(apiToken)
+	openaiConfig.BaseURL = `https://api.siliconflow.cn/v1`
+	openaiConfig.APIType = openai.APITypeOpenAI
+	openaiConfig.HTTPClient = &http.Client{}
+
+	client := openai.NewClientWithConfig(openaiConfig)
+
+	streamResp, err := client.CreateChatCompletionStream(context.Background(), openai.ChatCompletionRequest{
+		Model: modelName,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: chatInput,
+			},
+		},
+	})
+	if err != nil {
+		elog.Error("create chat completion", zap.Error(err))
+		return
+	}
+	defer streamResp.Close()
+
+	for {
+		chunk, err := streamResp.Recv()
+		if err != nil {
+			//todo 错误处理
+			elog.Error("recv", zap.Error(err))
+			break
+		}
+
+		if chunk.Choices[0].FinishReason == "stop" {
+			//todo 结束处理
+			break
+		}
+
+		if chunk.Choices[0].Delta.Content != "" {
+			event <- streaming.FormatDataContent(chunk.Choices[0].Delta.Content, streaming.TextPart)
+		}
+	}
 }
