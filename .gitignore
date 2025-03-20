@@ -2,3 +2,4 @@
 /aichatoffice/bin
 .vscode
 app/.vite/
+aichatoffice/__debug_*

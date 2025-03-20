@@ -84,11 +84,13 @@ const (
 )
 
 func FormatDataContent(data string, dataType StreamPartType) string {
+	// 处理转义
+	data = strconv.Quote(data)
+	data = data[1 : len(data)-1]
+
 	switch dataType {
 	case TextPart:
-		quotedData := strconv.Quote(data)
-		quotedData = quotedData[1 : len(quotedData)-1]
-		return fmt.Sprintf("0:\"%s\"\n", quotedData)
+		return fmt.Sprintf("0:\"%s\"\n", data)
 	case ReasoningPart:
 		return fmt.Sprintf("g:\"%s\"\n", data)
 	case RedactedReasoningPart:

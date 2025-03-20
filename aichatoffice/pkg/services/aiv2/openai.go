@@ -179,7 +179,7 @@ func completions(event chan string) {
 	apiToken := `sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz`
 	modelName := `deepseek-ai/DeepSeek-R1-Distill-Llama-8B`
 
-	chatInput := `帮我生成一篇 300 字的科幻小说`
+	chatInput := `你是谁`
 
 	openaiConfig := openai.DefaultConfig(apiToken)
 	openaiConfig.BaseURL = `https://api.siliconflow.cn/v1`
@@ -202,6 +202,7 @@ func completions(event chan string) {
 		return
 	}
 	defer streamResp.Close()
+	defer close(event)
 
 	for {
 		chunk, err := streamResp.Recv()
