@@ -262,7 +262,11 @@ export default function DocumentChat() {
                   onClick={async () => {
                     await setInput(f({ id: "chat.summary" }));
                     setTimeout(() => {
-                      handleSubmit(new Event('submit'));
+                      handleSubmit(new Event('submit'), {
+                        body: {
+                          customKey: "summary"
+                        }
+                      });
                     }, 0)
                   }}
                   className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
@@ -437,7 +441,11 @@ export default function DocumentChat() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
-                      handleSubmit(e)
+                      handleSubmit(e, {
+                        body: {
+                          customKey: (input == "总结全文" || input == "summary") ? "summary" : ""
+                        }
+                      })
                     }
                   }}
                   className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
