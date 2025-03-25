@@ -7,7 +7,6 @@ import (
 	"aichatoffice/pkg/server/http/api"
 	"aichatoffice/pkg/server/http/callback"
 	"aichatoffice/pkg/server/http/middlewares"
-	aiv2svc "aichatoffice/pkg/services/aiv2"
 	"aichatoffice/ui"
 )
 
@@ -43,19 +42,21 @@ func ServeHTTP() *egin.Component {
 
 	// ai-chat路由
 	apiGroup := r.Group("/api")
+	// chatRouters := apiGroup.Group("/chat")
+	// {
+	// 	chatRouters.Use(middlewares.ChatUser())
+	// 	chatRouters.POST("", api.NewConversation)
+	// 	chatRouters.GET("/:conversation_id", api.GetConversation)
+	// 	chatRouters.DELETE("/:conversation_id", api.DeleteConversation)
+	// 	chatRouters.POST("/:conversation_id/break", api.BreakConversation)
+	// 	chatRouters.POST("/:conversation_id/chat", api.Chat)
+	// }
+
 	chatRouters := apiGroup.Group("/chat")
 	{
 		chatRouters.Use(middlewares.ChatUser())
-		chatRouters.POST("", api.NewConversation)
-		chatRouters.GET("/:conversation_id", api.GetConversation)
-		chatRouters.DELETE("/:conversation_id", api.DeleteConversation)
-		chatRouters.POST("/:conversation_id/break", api.BreakConversation)
-		chatRouters.POST("/:conversation_id/chat", api.Chat)
-	}
-
-	chatV2Routers := apiGroup.Group("/chatv2")
-	{
-		chatV2Routers.POST("/:conversation_id/chat", aiv2svc.Completions)
+		chatRouters.GET("/:fileId/conversation", api.GetConversation)
+		chatRouters.POST("/:conversation_id/chat", api.Completions)
 	}
 
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))

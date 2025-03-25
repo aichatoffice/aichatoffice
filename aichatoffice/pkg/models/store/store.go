@@ -21,7 +21,7 @@ type FileStore interface {
 type ChatStore interface {
 	NewConversation(ctx context.Context, userId string, conversationId string, system string, fileGuid string) error
 	GetConversation(ctx context.Context, userId string, conversationId string) (*dto.ChatConversation, error)
-	AddMessage(ctx context.Context, userId string, conversationId string, msg dto.ChatMessageDO) error
+	AddMessage(ctx context.Context, userId string, conversationId string, chatInput string) error
 	BreakConversation(ctx context.Context, userId string, conversationId string) error
 	IsConversationBreak(ctx context.Context, userId string, conversationId string) (bool, error)
 	ResumeConversation(ctx context.Context, userId string, conversationId string) error

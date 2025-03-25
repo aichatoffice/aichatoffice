@@ -2,211 +2,130 @@ package api
 
 import (
 	"errors"
+	"io"
 	"net/http"
-	"runtime"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gotomicro/ego/core/elog"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/spf13/cast"
 	"go.uber.org/zap"
 
 	"aichatoffice/pkg/invoker"
-	"aichatoffice/pkg/models/dto"
 	"aichatoffice/pkg/server/http/middlewares"
-	"aichatoffice/pkg/utils"
 )
 
-func NewConversation(c *gin.Context) {
-	c.JSON(200, gin.H{"data": gin.H{"conversation_id": uuid.New().String()}})
-	return
-	userId, ok := getUserId(c)
-	if !ok || userId == "" {
-		elog.Error("no userid")
-		c.AbortWithStatus(400)
-		return
-	}
-	req := dto.NewConversationRequest{}
-	err := c.ShouldBind(&req)
-	if err != nil {
-		c.AbortWithStatus(400)
-		return
-	}
-
-	cid, err := invoker.ChatService.NewConversation(c.Request.Context(), userId, req.System, req.FileGuid)
-	if err != nil {
-		if errors.Is(err, dto.ErrConversationLimitReached) {
-			c.AbortWithStatusJSON(400, gin.H{"msg": err.Error(), "code": 400})
-			return
-		}
-		elog.Error("new conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), elog.FieldCtxTid(c.Request.Context()))
-		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
-		return
-	}
-	c.JSON(200, gin.H{"data": gin.H{"conversation_id": cid}})
+// ContentPart 表示消息内容的一部分
+type ContentPart struct {
+	Type     string `json:"type"`                // 内容类型，如 "text" 或 "image"
+	Text     string `json:"text,omitempty"`      // 文本内容
+	ImageUrl string `json:"image_url,omitempty"` // 图片URL，可选
 }
 
-func GetConversation(c *gin.Context) {
-	userId, ok := getUserId(c)
-	if !ok || userId == "" {
-		elog.Error("no userid")
-		c.AbortWithStatus(400)
-		return
-	}
-	conversationId := c.Param("conversation_id")
-	if conversationId == "" {
-		elog.Error("no conversation id")
-		c.AbortWithStatus(400)
-		return
-	}
-	conversation, err := invoker.ChatService.GetConversation(c.Request.Context(), userId, conversationId)
-	if err != nil {
-		elog.Error("get conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
-		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
-		return
-	}
-	c.JSON(200, gin.H{"data": conversation})
+// ChatMessage 表示单个聊天消息
+type ChatMessage struct {
+	Role    string        `json:"role"`    // 角色，如 "user" 或 "assistant"
+	Content string        `json:"content"` // 文本内容，通常是简化的内容
+	Parts   []ContentPart `json:"parts"`   // 实际内容部分的数组
 }
 
-func DeleteConversation(c *gin.Context) {
-	userId, ok := getUserId(c)
-	if !ok || userId == "" {
-		elog.Error("no userid")
-		c.AbortWithStatus(400)
-		return
-	}
-
-	conversationId := c.Param("conversation_id")
-	if conversationId == "" {
-		elog.Error("no conversation id")
-		c.AbortWithStatus(400)
-		return
-	}
-
-	err := invoker.ChatService.DeleteConversation(c.Request.Context(), userId, conversationId)
-	if err != nil {
-		elog.Error("delete conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
-		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
-		return
-	}
-	c.Status(http.StatusNoContent)
+// ChatRequest 表示聊天请求
+type ChatRequest struct {
+	ConversationID string        `json:"conversationId"`
+	Messages       []ChatMessage `json:"messages"`
+	CustomKey      string        `json:"customKey"`
 }
 
-func BreakConversation(c *gin.Context) {
-	userId, ok := getUserId(c)
-	if !ok || userId == "" {
-		elog.Error("no userid")
-		c.AbortWithStatus(400)
-		return
-	}
-	conversationId := c.Param("conversation_id")
-	err := invoker.ChatService.BreakConversation(c.Request.Context(), userId, conversationId)
-	if err != nil {
-		elog.Error("break conversation failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
-		c.AbortWithStatusJSON(500, gin.H{"msg": err.Error(), "code": 500})
-		return
-	}
-	c.Status(http.StatusNoContent)
-}
+func Completions(ctx *gin.Context) {
+	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	ctx.Writer.Header().Set("Cache-Control", "no-cache")
+	ctx.Writer.Header().Set("Connection", "keep-alive")
+	ctx.Writer.Header().Set("Transfer-Encoding", "chunked")
+	ctx.Writer.Header().Set("x-vercel-ai-data-stream", "v1")
 
-func Chat(c *gin.Context) {
-	c.JSON(204, nil)
-	return
-	req := dto.ChatRequest{}
-	err := c.ShouldBind(&req)
+	chatRequest := ChatRequest{}
+	err := ctx.ShouldBindJSON(&chatRequest)
 	if err != nil {
-		c.AbortWithStatus(400)
+		elog.Error("should bind json", zap.Error(err))
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	userId, ok := getUserId(c)
-	if !ok || userId == "" {
-		elog.Error("no userid")
-		c.AbortWithStatus(400)
+
+	// 最后一条里的content，作为输入内容
+	chatInput, err := handleChatRequest(chatRequest)
+	if err != nil {
+		elog.Error("handle chat request", zap.Error(err))
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	conversationId := c.Param("conversation_id")
-	if conversationId == "" {
-		elog.Error("no conversation id")
-		c.AbortWithStatus(400)
-		return
-	}
-	var msg dto.ChatMessage
-	msg.Content = req.Content
-	msg.Role = dto.ChatMessageRoleUser
-	msg.MessageId, _ = utils.NewGuid(16)
-	msg.Type = dto.ChatMessageTypeQuestion
-	msg.Created = time.Now().UnixMilli()
+
 	event := make(chan string)
-	c.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("Transfer-Encoding", "chunked")
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				// 获取调用栈信息
-				buf := make([]byte, 1024)
-				n := runtime.Stack(buf, false)
-				stackTrace := buf[:n]
-				elog.Error("chat error Recovered", zap.ByteString("error", stackTrace), zap.Any("req", req))
-			}
-		}()
 
-		for e := range event {
-			if c.Writer == nil {
-				elog.Error("chat Error: c.Writer is nil")
-				return
-			}
-			_, err := c.Writer.WriteString("data: ")
-			if err != nil {
-				elog.Error("chat Error writing to response:", zap.Error(err))
-				return
-			}
-			_, err = c.Writer.WriteString(e)
-			if err != nil {
-				elog.Error("chat Error writing to response:", zap.Error(err))
-				return
-			}
-			_, err = c.Writer.WriteString("\n\n")
-			if err != nil {
-				elog.Error("chat Error writing to response:", zap.Error(err))
-				return
-			}
-			if flusher, ok := c.Writer.(http.Flusher); ok {
-				flusher.Flush()
-			} else {
-				elog.Error("chat Error: c.Writer does not implement http.Flusher")
-				return
-			}
+	//todo，处理这些 id
+	userId := ctx.Value(middlewares.CtxUserGuid).(string)
+
+	chatInput = "你好，你是谁"
+
+	// 对接 openai 协议
+	go invoker.ChatService.Chat(ctx.Request.Context(), userId, chatRequest.ConversationID, chatInput, event)
+
+	ctx.Stream(func(w io.Writer) bool {
+		e, ok := <-event
+		if !ok {
+			return false
 		}
-		c.Status(http.StatusOK)
-	}()
-	err = invoker.ChatService.Chat(c.Request.Context(), userId, conversationId, msg, req.RegenMessageId, event)
-	if err != nil {
-		elog.Error("chat failed", zap.Error(err), zap.String("userId", cast.ToString(userId)), zap.String("conversationId", conversationId), elog.FieldCtxTid(c.Request.Context()))
-		apiErr := dto.FromError(err)
-		emsg := dto.ChatMessage{
-			Role:      dto.ChatMessageRoleAssistant,
-			Type:      dto.ChatMessageTypeError,
-			ErrorCode: apiErr.Code,
-			ErrorMsg:  apiErr.Message,
-		}
-		msgStr, _ := jsoniter.MarshalToString(emsg)
-		c.Writer.WriteString("data: ")
-		c.Writer.WriteString(msgStr)
-		c.Writer.WriteString("\n\n")
-		close(event)
-		return
-	}
-	close(event)
+		elog.Info("chat event", zap.String("event", e))
+		ctx.Writer.WriteString(e)
+		w.(http.Flusher).Flush()
+
+		return true
+	})
 }
 
-func getUserId(c *gin.Context) (string, bool) {
-	uid := middlewares.GetChatUserGuid(c)
-	if uid == "" {
-		return "", false
+// 处理输入，特别是自定义 key
+func handleChatRequest(chatRequest ChatRequest) (chatInput string, err error) {
+	if len(chatRequest.Messages) == 0 {
+		err = errors.New("no messages")
+		return
 	}
-	return uid, true
+
+	if chatRequest.CustomKey != "" {
+		chatInput = chatRequest.CustomKey
+		return
+	}
+
+	// todo 只拿了最后一条，考虑支持更多
+	chatInput = chatRequest.Messages[len(chatRequest.Messages)-1].Content
+	return
+}
+
+// 根据文件 id 获取对话 id 及历史，如果没有对话，则新建对话
+func GetConversation(ctx *gin.Context) {
+	fileId := ctx.Query("fileId")
+	if fileId == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "fileId is required"})
+		return
+	}
+
+	userId := ctx.Value(middlewares.CtxUserGuid).(string)
+	conversationId := ""
+
+	// "no_record must not be an error"
+	conversation, err := invoker.ChatService.GetConversation(ctx.Request.Context(), userId, fileId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if conversation == nil || conversation.ConversationId == "" {
+		conversationId = uuid.New().String()
+	} else {
+		conversationId = conversation.ConversationId
+	}
+
+	//todo get history
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"conversationId": conversationId,
+		// "messages":       messages,
+	})
 }

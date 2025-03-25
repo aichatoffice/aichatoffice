@@ -2,12 +2,10 @@ package invoker
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/server/egin"
 
-	"aichatoffice/pkg/models/leveldbstore"
 	sqlitestore "aichatoffice/pkg/models/sqlite"
 	"aichatoffice/pkg/models/store"
 	aisvc "aichatoffice/pkg/services/ai"
@@ -35,27 +33,18 @@ func Init() (err error) {
 
 	FileService = filesvc.NewFileService(FileStore)
 	FileService.InitCaseFile()
-	aiSvc := aisvc.NewAiWrapper()
+
+	// todo 支持多种 ai 协议，可根据配置切换
+	aiSvc, err := aisvc.NewOpenAI()
+	if err != nil {
+		return fmt.Errorf("service init ai failed: %w", err)
+	}
 	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc)
 	return nil
 }
 
 func initStore() (err error) {
 	switch econf.GetString("store.type") {
-	case "leveldb":
-		leveldb, err := leveldbstore.NewLevelDB()
-		if err != nil {
-			return fmt.Errorf("service init leveldb failed: %w", err)
-		}
-		FileStore = leveldb
-		ChatStore = leveldb
-		if econf.GetInt("store.enableExpireJob") > 0 {
-			interval := econf.GetDuration("store.expireJobInterval")
-			if interval <= 0 {
-				interval = 5 * time.Second
-			}
-			ChatStore.RunDeleteExpireKeysCronjob(interval)
-		}
 	case "sqlite":
 		sqlite, err := sqlitestore.NewSqliteStore()
 		if err != nil {

@@ -62,14 +62,15 @@ func (s *SqliteStore) GetConversation(ctx context.Context, userId string, conver
 }
 
 // AddMessage add message to conversation
-func (s *SqliteStore) AddMessage(ctx context.Context, userId string, conversationId string, msg dto.ChatMessageDO) error {
-	// msg.UserId = userId
-	// msg.ConversationId = conversationId
-	// err := s.DB.Create(&msg).Error
-	// if err != nil {
-	// 	elog.Error("AddMessage_error create", elog.FieldErr(err), l.S("userId", userId), l.S("conversationId", conversationId))
-	// 	return err
+func (s *SqliteStore) AddMessage(ctx context.Context, userId string, conversationId string, chatInput string) error {
+	// msg := dto.ChatMessageDO{
+	// 	UserId:         userId,
+	// 	ConversationId: conversationId,
+	// 	Content:        chatInput,
+	// 	Role:           "user",
+	// 	Created:        time.Now().Unix(),
 	// }
+	// return s.DB.Create(&msg).Error
 	return nil
 }
 

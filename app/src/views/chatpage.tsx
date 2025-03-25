@@ -52,7 +52,7 @@ export default function DocumentChat() {
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialInput: f({ id: "chat.summary" }),
     // api: `${serverUrl}/api/chat/${conversationId}/chat`,
-    api: `${serverUrl}/api/chatv2/${conversationId}/chat`,
+    api: `${serverUrl}/api/chat/${conversationId}/chat`,
   });
 
 
