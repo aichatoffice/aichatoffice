@@ -19,9 +19,9 @@ interface FileContextType {
   deleteFile: (id: string) => Promise<void>
   getPreviewUrl: (id: string) => Promise<string>
   filesLoading: boolean
-  createFileChat: () => Promise<string>
   getFileById: (id: string) => Promise<FileItem>
   getServerUrl: () => Promise<string>
+  getConversation: (fileId: string) => Promise<string>
 }
 
 const FileContext = createContext<FileContextType | null>(null)
@@ -141,15 +141,15 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       return ""
     }
   }
-  const createFileChat = async () => {
+
+  const getConversation = async (fileId: string) => {
     try {
       const data = await apiRequest({
-        path: `/api/chat`,
-        method: "POST",
+        path: `/api/chat/${fileId}/conversation`,
       })
-      return data?.data?.conversation_id
+      return data?.conversationId
     } catch (error) {
-      console.error('Error creating chat:', error)
+      console.error('Error getting conversation:', error)
     }
   }
 
@@ -167,9 +167,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         deleteFile,
         getPreviewUrl,
         filesLoading,
-        createFileChat,
         getFileById,
-        getServerUrl
+        getServerUrl,
+        getConversation
       }}
     >
       {children}

@@ -100,7 +100,7 @@ func handleChatRequest(chatRequest ChatRequest) (chatInput string, err error) {
 
 // 根据文件 id 获取对话 id 及历史，如果没有对话，则新建对话
 func GetConversation(ctx *gin.Context) {
-	fileId := ctx.Query("fileId")
+	fileId := ctx.Param("fileId")
 	if fileId == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "fileId is required"})
 		return

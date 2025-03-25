@@ -19,6 +19,7 @@ export default {
   "chat.retry": "对话已中断",
   "chat.error": "发生错误",
   "chat.hint": "点击机器人图标开始AI对话",
+  "chat.context": "上下文数",
   // 首页
   "homepage.title": "与任何文档聊天",
   "homepage.description": "使用Chatoffice，轻松与PDF、Word等文档互动，快速提取关键信息，提升工作效率。",

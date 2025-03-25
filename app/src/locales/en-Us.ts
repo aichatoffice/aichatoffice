@@ -19,6 +19,7 @@ export default {
   "chat.retry": "Conversation interrupted",
   "chat.error": "An error occurred",
   "chat.hint": "Click the robot icon to start AI chat",
+  "chat.context": "Context number",
   // 首页
   "homepage.title": "Chat with any Document",
   "homepage.description": "With Chatoffice, easily interact with PDFs, Words and more, quickly extracting key information to boost your productivity.",

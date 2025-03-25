@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info } from "lucide-react"
+import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info, Settings } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
 import avatar from "@/assets/avatar.png"
@@ -15,12 +15,16 @@ const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
 
+interface CustomRequestBody {
+  customKey?: string;
+}
+
 export default function DocumentChat() {
   const { formatMessage: f } = useIntl()
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, createFileChat, getServerUrl } = useFiles()
+  const { getPreviewUrl, getServerUrl, getConversation } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
@@ -42,6 +46,9 @@ export default function DocumentChat() {
 
   const [collapsedReasonings, setCollapsedReasonings] = useState<{ [key: string]: boolean }>({});
 
+  // 添加上下文数量状态
+  const [contextCount, setContextCount] = useState(5);
+
   const toggleReasoning = (index: string) => {
     setCollapsedReasonings(prev => ({
       ...prev,
@@ -51,10 +58,16 @@ export default function DocumentChat() {
 
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialInput: f({ id: "chat.summary" }),
-    // api: `${serverUrl}/api/chat/${conversationId}/chat`,
     api: `${serverUrl}/api/chat/${conversationId}/chat`,
+    experimental_prepareRequestBody: ({ messages, id, requestBody }) => {
+      console.log("requestBody", requestBody)
+      return {
+        messages: messages.slice(-contextCount),
+        id: id,
+        customKey: (requestBody as CustomRequestBody)?.customKey
+      }
+    }
   });
-
 
   useEffect(() => {
     getServerUrl().then(result => {
@@ -91,7 +104,7 @@ export default function DocumentChat() {
         setPreviewUrl(url || "");
 
         if (url) {
-          const id = await createFileChat();
+          const id = await getConversation(documentId);
           if (!isSubscribed) return;
           setConversationId(id);
         }
@@ -199,7 +212,7 @@ export default function DocumentChat() {
 
         {/* Right Chat Panel*/}
         <div
-          className={`${isChatOpen ? "w-[300px] md:w-[400px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
+          className={`${isChatOpen ? "w-[280px] md:w-[340px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
         >
           {/* 添加提示组件 */}
           {showHint && !isChatOpen && (
@@ -431,45 +444,65 @@ export default function DocumentChat() {
           </div>
 
           {isChatOpen && (
-            <div className="p-4 border-t border-gray-200">
-              <form onSubmit={(e) => handleSubmit(e, {
-                body: {
-                  customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
-                }
-              })} className="flex gap-2">
-                <Input
-                  placeholder={f({ id: "chat.placeholder" })}
-                  name="prompt"
-                  value={input}
-                  onChange={(e) => {
-                    handleInputChange(e);
-                    setCurrentInput(e.target.value)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                      e.preventDefault()
-                      handleSubmit(e, {
-                        body: {
-                          customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
-                        }
-                      })
-                    }
-                  }}
-                  className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-                <Button
-                  type="submit"
-                  className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
-                  onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
-                  disabled={!(input || status !== "ready")}
-                >
-                  {status == "submitted" || status == "streaming" ? (
-                    <Square className="h-4 w-4" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </form>
+            <div className="p-4 pt-2 border-t border-gray-200">
+              <div className="flex flex-col gap-2">
+                {/* 添加上下文选择器 */}
+                <div className="flex items-center gap-2 text-sm text-gray-600 ">
+                  <Settings className="h-4 w-4 text-gray-500" />
+                  <div className="border border-dashed border-gray-200 rounded-xl px-2 text-xs bg-gray-100">
+                    <span className="text-gray-500 text-xs">{f({ id: "chat.context" })}:</span>
+                    <select
+                      value={contextCount}
+                      onChange={(e) => setContextCount(Number(e.target.value))}
+                      className="rounded-xl px-1 py-1 text-xs focus:outline-none"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>15</option>
+                    </select>
+                  </div>
+
+                </div>
+
+                <form onSubmit={(e) => handleSubmit(e, {
+                  body: {
+                    customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
+                  }
+                })} className="flex gap-2">
+                  <Input
+                    placeholder={f({ id: "chat.placeholder" })}
+                    name="prompt"
+                    value={input}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      setCurrentInput(e.target.value)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                        e.preventDefault()
+                        handleSubmit(e, {
+                          body: {
+                            customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
+                          }
+                        })
+                      }
+                    }}
+                    className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  <Button
+                    type="submit"
+                    className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
+                    onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
+                    disabled={!(input || status !== "ready")}
+                  >
+                    {status == "submitted" || status == "streaming" ? (
+                      <Square className="h-4 w-4" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+              </div>
             </div>
           )}
         </div>
