@@ -11,6 +11,7 @@ import (
 	aisvc "aichatoffice/pkg/services/ai"
 	chatsvc "aichatoffice/pkg/services/chat"
 	filesvc "aichatoffice/pkg/services/file"
+	officesvc "aichatoffice/pkg/services/office"
 	"aichatoffice/ui"
 )
 
@@ -18,6 +19,7 @@ var (
 	Gin         *egin.Component
 	FileService *filesvc.FileService
 	ChatService *chatsvc.ChatSvc
+	OfficeSvc   officesvc.OfficeSvc
 
 	// store
 	FileStore store.FileStore
@@ -39,7 +41,11 @@ func Init() (err error) {
 	if err != nil {
 		return fmt.Errorf("service init ai failed: %w", err)
 	}
-	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc)
+	OfficeSvc = officesvc.NewOfficeSDK(officesvc.OfficeSDKConfig{
+		BaseURL: "http://localhost:9101", //todo 放到哪个配置里
+	})
+	ChatService = chatsvc.NewChatSvc(ChatStore, aiSvc, OfficeSvc)
+
 	return nil
 }
 

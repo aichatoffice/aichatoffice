@@ -2,6 +2,7 @@ package chatsvc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
@@ -11,18 +12,21 @@ import (
 	"aichatoffice/pkg/models/store"
 	"aichatoffice/pkg/models/streaming"
 	aisvc "aichatoffice/pkg/services/ai"
+	officesvc "aichatoffice/pkg/services/office"
 	"aichatoffice/pkg/utils"
 )
 
 type ChatSvc struct {
 	chatStore store.ChatStore
 	aiSvc     aisvc.AiSvc
+	officeSvc officesvc.OfficeSvc
 }
 
-func NewChatSvc(chatStore store.ChatStore, aiSvc aisvc.AiSvc) *ChatSvc {
+func NewChatSvc(chatStore store.ChatStore, aiSvc aisvc.AiSvc, officeSvc officesvc.OfficeSvc) *ChatSvc {
 	return &ChatSvc{
 		chatStore: chatStore,
 		aiSvc:     aiSvc,
+		officeSvc: officeSvc,
 	}
 }
 
@@ -91,6 +95,21 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 		}
 		close(event)
 	}()
+
+	// 处理自定义 key
+	//todo 改成自定义类型
+	switch chatInput {
+	case "summary":
+		// 获取文件内容
+		fileContent, err := c.officeSvc.GetFileContent(conversationId) //todo 改成文件 id
+		if err != nil {
+			elog.Error("get file content failed", zap.Error(err), elog.FieldCtxTid(ctx))
+			return err
+		}
+
+		// tood 拼接 prompts
+		chatInput = fmt.Sprintf("请总结以下内容：%s", fileContent)
+	}
 
 	// 调用 ai
 	c.aiSvc.CompletionsStream(chatInput, teeWriter)
