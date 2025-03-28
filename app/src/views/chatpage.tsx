@@ -35,6 +35,8 @@ export default function DocumentChat() {
 
   const [currentInput, setCurrentInput] = useState("")
 
+  const [initialMessages, setInitialMessages] = useState([])
+
   // 添加新的状态来跟踪每条消息的状态
   const [messageStates, setMessageStates] = useState<{
     [key: string]: {
@@ -57,6 +59,7 @@ export default function DocumentChat() {
   };
 
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
+    initialMessages: initialMessages,
     initialInput: f({ id: "chat.summary" }),
     api: `${serverUrl}/api/chat/${conversationId}/chat`,
     experimental_prepareRequestBody: ({ messages, id, requestBody }) => {
@@ -104,9 +107,10 @@ export default function DocumentChat() {
         setPreviewUrl(url || "");
 
         if (url) {
-          const id = await getConversation(documentId);
+          const conversation = await getConversation(documentId);
           if (!isSubscribed) return;
-          setConversationId(id);
+          setConversationId(conversation.conversationId);
+          setInitialMessages(conversation.messages);
         }
       } catch (error) {
         console.error('初始化聊天失败:', error);
@@ -250,7 +254,7 @@ export default function DocumentChat() {
           >
             <img src={Robot} alt="robot" className={`w-7 h-7 transition-transform  ${isChatOpen ? "rotate-360" : ""}`} />
           </Button>
-          <div className={`${isChatOpen ? "opacity-100" : "opacity-0"} transition-opacity flex-1 p-4 overflow-auto`}>
+          <div className={`${isChatOpen ? "opacity-100 p-4" : "opacity-0"} transition-opacity flex-1  overflow-auto`}>
             {messages.length === 0 ? (
               <div className="space-y-4 text-sm">
                 <div className="flex gap-3">

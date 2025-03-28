@@ -6,12 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gotomicro/ego/core/elog"
 	"go.uber.org/zap"
 
 	"aichatoffice/pkg/invoker"
-	"aichatoffice/pkg/server/http/middlewares"
 )
 
 // ContentPart 表示消息内容的一部分
@@ -42,6 +40,7 @@ func Completions(ctx *gin.Context) {
 	ctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	ctx.Writer.Header().Set("x-vercel-ai-data-stream", "v1")
 
+	conversionId := ctx.Param("conversation_id")
 	chatRequest := ChatRequest{}
 	err := ctx.ShouldBindJSON(&chatRequest)
 	if err != nil {
@@ -60,13 +59,13 @@ func Completions(ctx *gin.Context) {
 
 	event := make(chan string)
 
-	//todo，处理这些 id
-	userId := ctx.Value(middlewares.CtxUserGuid).(string)
+	// todo，处理这些 id
+	userId := "111"
 
 	chatInput = "你好，你是谁"
 
 	// 对接 openai 协议
-	go invoker.ChatService.Chat(ctx.Request.Context(), userId, chatRequest.ConversationID, chatInput, event)
+	go invoker.ChatService.Chat(ctx.Request.Context(), userId, conversionId, chatInput, event)
 
 	ctx.Stream(func(w io.Writer) bool {
 		e, ok := <-event
@@ -98,34 +97,25 @@ func handleChatRequest(chatRequest ChatRequest) (chatInput string, err error) {
 	return
 }
 
-// 根据文件 id 获取对话 id 及历史，如果没有对话，则新建对话
+// GetConversation 根据文件 id 获取对话 id 及历史，如果没有对话，则新建对话
 func GetConversation(ctx *gin.Context) {
 	fileId := ctx.Param("fileId")
 	if fileId == "" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "fileId is required"})
 		return
 	}
+	// todo
+	userId := "111"
 
-	userId := ctx.Value(middlewares.CtxUserGuid).(string)
-	conversationId := ""
-
-	// "no_record must not be an error"
-	conversation, err := invoker.ChatService.GetConversation(ctx.Request.Context(), userId, fileId)
+	// 获取或创建对话
+	conversation, err := invoker.ChatService.GetOrCreateConversation(ctx.Request.Context(), userId, fileId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if conversation == nil || conversation.ConversationId == "" {
-		conversationId = uuid.New().String()
-	} else {
-		conversationId = conversation.ConversationId
-	}
-
-	//todo get history
-
 	ctx.JSON(http.StatusOK, gin.H{
-		"conversationId": conversationId,
-		// "messages":       messages,
+		"conversationId": conversation.ConversationId,
+		"messages":       conversation.Messages,
 	})
 }

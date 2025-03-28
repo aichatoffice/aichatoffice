@@ -30,16 +30,47 @@ func NewChatSvc(chatStore store.ChatStore, aiSvc aisvc.AiSvc, officeSvc officesv
 	}
 }
 
-func (c ChatSvc) NewConversation(ctx context.Context, userId string, system string, fileGuid string) (conversationId string, err error) {
+// GetOrCreateConversation 获取或创建对话
+func (c ChatSvc) GetOrCreateConversation(ctx context.Context, userId string, fileId string) (*dto.ChatConversation, error) {
+	// 先尝试获取现有对话
+	conversation, err := c.chatStore.GetFileConversation(ctx, userId, fileId)
+	if err != nil {
+		elog.Error("get conversation failed", zap.Error(err), elog.FieldCtxTid(ctx))
+		return nil, err
+	}
+
+	// 如果对话已存在，直接返回
+	if conversation != nil && conversation.ConversationId != "" {
+		conversation.Messages, err = c.chatStore.GetMessages(ctx, conversation.ConversationId)
+		if err != nil {
+			elog.Error("get messages failed", zap.Error(err), elog.FieldCtxTid(ctx))
+			return nil, err
+		}
+		return conversation, nil
+	}
+
+	conversationId, err := c.NewConversation(ctx, userId, fileId)
+	if err != nil {
+		elog.Error("create conversation failed", zap.Error(err), elog.FieldCtxTid(ctx))
+		return nil, err
+	}
+
+	// 返回新创建的对话信息
+	return &dto.ChatConversation{
+		ConversationId: conversationId,
+		FileGuid:       fileId,
+		UserId:         userId,
+		Messages:       []dto.ChatMessage{},
+	}, nil
+}
+
+// NewConversation 创建对话
+func (c ChatSvc) NewConversation(ctx context.Context, userId string, fileGuid string) (conversationId string, err error) {
 	// generate conversation id
 	conversationId, err = utils.NewGuid(16)
 	if err != nil {
 		elog.Error("generate conversation id failed", zap.Error(err), elog.FieldCtxTid(ctx))
 		return "", err
-	}
-	// get default system message from config if system message is empty
-	if system == "" {
-		system = econf.GetString("userChat.defaultSystemMessage")
 	}
 
 	// 限制数量
@@ -55,7 +86,7 @@ func (c ChatSvc) NewConversation(ctx context.Context, userId string, system stri
 		}
 	}
 
-	err = c.chatStore.NewConversation(ctx, userId, conversationId, system, fileGuid)
+	err = c.chatStore.NewConversation(ctx, userId, conversationId, fileGuid)
 	if err != nil {
 		elog.Error("create conversation failed", zap.Error(err), elog.FieldCtxTid(ctx))
 		return "", err
@@ -63,27 +94,11 @@ func (c ChatSvc) NewConversation(ctx context.Context, userId string, system stri
 	return conversationId, nil
 }
 
-// BreakConversation break conversation
-func (c ChatSvc) BreakConversation(ctx context.Context, userId string, conversationId string) error {
-	return c.chatStore.BreakConversation(ctx, userId, conversationId)
-}
-
+// Chat AIChat方法
 func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string, chatInput string, event chan<- string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	// conversation, err := c.chatStore.GetConversation(ctx, userId, conversationId)
-	// if err != nil {
-	// 	elog.Error("get conversation failed", zap.Error(err), elog.FieldCtxTid(ctx))
-	// 	return err
-	// }
-	// if conversation.ConversationId == "" {
-	// 	elog.Error("no conversation found", elog.FieldCtxTid(ctx))
-	// 	return dto.ErrConversationNotFound
-	// }
-
 	// todo 改成 workflow
-
 	rawMsg := make(chan string)
 	defer close(rawMsg)
 	teeWriter := utils.NewTeeWriter(utils.NewChanWriter(rawMsg))
@@ -97,11 +112,11 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 	}()
 
 	// 处理自定义 key
-	//todo 改成自定义类型
+	// todo 改成自定义类型
 	switch chatInput {
 	case "summary":
 		// 获取文件内容
-		fileContent, err := c.officeSvc.GetFileContent(conversationId) //todo 改成文件 id
+		fileContent, err := c.officeSvc.GetFileContent(conversationId) // todo 改成文件 id
 		if err != nil {
 			elog.Error("get file content failed", zap.Error(err), elog.FieldCtxTid(ctx))
 			return err
@@ -115,21 +130,68 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 	c.aiSvc.CompletionsStream(chatInput, teeWriter)
 
 	// 记到数据库
-	go func() {
+	go func(userId string, conversationId string) {
 		response := teeWriter.GetBuffer().String()
-		// todo 在这里入库
-		// input是 user，response 是 assistant
-		elog.Warn("input", zap.String("input", chatInput))
-		elog.Warn("response", zap.String("response", response))
-	}()
+
+		// 获取现有对话
+		conversation, err := c.chatStore.GetConversation(ctx, userId, conversationId)
+		if err != nil {
+			elog.Error("get conversation failed", zap.Error(err))
+			return
+		}
+		if conversation == nil {
+			elog.Error("conversation not found")
+			return
+		}
+
+		// 追加新消息到现有对话
+
+		messages := []dto.ChatMessage{
+			{
+				ConversationId: conversationId,
+				Content:        chatInput,
+				Parts: []dto.ContentPart{
+					{
+						Type: "text",
+						Text: chatInput,
+					},
+				},
+				Role: "user",
+			},
+			{
+				ConversationId: conversationId,
+				Content:        response,
+				Parts: []dto.ContentPart{
+					{
+						Type: "text",
+						Text: response,
+					},
+				},
+				Role: "assistant",
+			},
+		}
+
+		// 更新对话消息
+		err = c.chatStore.AddMessages(ctx, conversationId, messages)
+		if err != nil {
+			elog.Error("update conversation messages failed",
+				zap.Error(err),
+				zap.String("conversationId", conversationId))
+		}
+	}(userId, conversationId)
 
 	return nil
 }
 
-func (c ChatSvc) GetConversation(ctx context.Context, userId string, conversationId string) (*dto.ChatConversation, error) {
-	return c.chatStore.GetConversation(ctx, userId, conversationId)
+// BreakConversation break conversation
+func (c ChatSvc) BreakConversation(ctx context.Context, userId string, conversationId string) error {
+	return c.chatStore.BreakConversation(ctx, userId, conversationId)
 }
 
-func (c ChatSvc) DeleteConversation(ctx context.Context, userId string, conversationId string) error {
-	return c.chatStore.DeleteConversation(ctx, userId, conversationId)
+func (c ChatSvc) GetConversation(ctx context.Context, userId string, fileGuid string) (*dto.ChatConversation, error) {
+	return c.chatStore.GetConversation(ctx, userId, fileGuid)
+}
+
+func (c ChatSvc) DeleteConversation(ctx context.Context, userId string, fileGuid string) error {
+	return c.chatStore.DeleteConversation(ctx, userId, fileGuid)
 }

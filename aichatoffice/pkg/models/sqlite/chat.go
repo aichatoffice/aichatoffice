@@ -2,9 +2,15 @@ package sqlitestore
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"aichatoffice/pkg/models/dto"
+
+	"github.com/gotomicro/cetus/l"
+	"github.com/gotomicro/ego/core/elog"
+	"gorm.io/gorm"
 )
 
 const (
@@ -13,65 +19,79 @@ const (
 	stopKeyTTL      = time.Minute * 10
 )
 
-func (s *SqliteStore) NewConversation(ctx context.Context, userId string, conversationId string, system string, fileGuid string) error {
-	// key := s.conversationKey(userId, conversationId)
-	// // check if conversation exists
-	// var count int64
-	// err := s.DB.Model(&dto.ChatConversation{}).Where("user_id = ? AND conversation_id = ?", userId, conversationId).Count(&count).Error
-	// if err != nil {
-	// 	elog.Error("NewConversation_error has key", elog.FieldErr(err), l.S("key", key))
-	// 	return err
-	// }
-	// if count > 0 {
-	// 	return errors.New("conversation exists")
-	// }
+// 创建对话
+func (s *SqliteStore) NewConversation(ctx context.Context, userId string, conversationId string, fileGuid string) error {
+	key := s.conversationKey(userId, conversationId)
+	// check if conversation exists
+	var count int64
+	err := s.DB.Model(&dto.ChatConversation{}).Where("user_id = ? AND conversation_id = ?", userId, conversationId).Count(&count).Error
+	if err != nil {
+		elog.Error("NewConversation_error has key", elog.FieldErr(err), l.S("key", key))
+		return err
+	}
+	if count > 0 {
+		return errors.New("conversation exists")
+	}
 
-	// // todo 写入过期时间
-	// info := &dto.ChatConversation{
-	// 	ConversationId: conversationId,
-	// 	System:         system,
-	// 	FileGuid:       fileGuid,
-	// 	UserId:         userId,
-	// }
-	// // set info
-	// err = s.DB.Create(info).Error
-	// if err != nil {
-	// 	return err
-	// }
+	// todo 写入过期时间
+	info := &dto.ChatConversation{
+		ConversationId: conversationId,
+		FileGuid:       fileGuid,
+		UserId:         userId,
+	}
+	// set info
+	err = s.DB.Create(info).Error
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-// GetConversation get all conversation messages from sqlite
+// CountConversation 统计当前用户所有对话数量
+func (s *SqliteStore) CountConversation(ctx context.Context, userId string) (int, error) {
+	var count int64
+	err := s.DB.Model(&dto.ChatConversation{}).Where("user_id = ?", userId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// GetFileConversation 获取文件Conversation内容
+func (s *SqliteStore) GetFileConversation(ctx context.Context, userId string, fileGuid string) (*dto.ChatConversation, error) {
+	var info dto.ChatConversation
+	err := s.DB.Where("user_id = ? AND file_guid = ?", userId, fileGuid).First(&info).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		elog.Error("GetConversation_error get info", elog.FieldErr(err))
+		return nil, err
+	}
+	return &info, nil
+}
+
 func (s *SqliteStore) GetConversation(ctx context.Context, userId string, conversationId string) (*dto.ChatConversation, error) {
-	// var info dto.ChatConversation
-	// err := s.DB.Where("user_id = ? AND conversation_id = ?", userId, conversationId).First(&info).Error
-	// if err != nil {
-	// 	elog.Error("GetConversation_error get info", elog.FieldErr(err), l.S("userId", userId), l.S("conversationId", conversationId))
-	// 	return nil, err
-	// }
-
-	// var msgs []dto.ChatMessageDO
-	// err = s.DB.Where("user_id = ? AND conversation_id = ?", userId, conversationId).Order("created ASC").Find(&msgs).Error
-	// if err != nil {
-	// 	elog.Error("GetConversation_error get messages", elog.FieldErr(err), l.S("userId", userId), l.S("conversationId", conversationId))
-	// 	return nil, err
-	// }
-	// info.Messages = msgs
-	// return &info, nil
-	return nil, nil
+	var info dto.ChatConversation
+	err := s.DB.Where("conversation_id = ?", conversationId).First(&info).Error
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
 }
 
-// AddMessage add message to conversation
-func (s *SqliteStore) AddMessage(ctx context.Context, userId string, conversationId string, chatInput string) error {
-	// msg := dto.ChatMessageDO{
-	// 	UserId:         userId,
-	// 	ConversationId: conversationId,
-	// 	Content:        chatInput,
-	// 	Role:           "user",
-	// 	Created:        time.Now().Unix(),
-	// }
-	// return s.DB.Create(&msg).Error
-	return nil
+// AddMessage 新增消息
+func (s *SqliteStore) AddMessages(ctx context.Context, conversationId string, messages []dto.ChatMessage) error {
+	return s.DB.Create(&messages).Error
+}
+
+func (s *SqliteStore) GetMessages(ctx context.Context, conversationId string) ([]dto.ChatMessage, error) {
+	var messages []dto.ChatMessage
+	err := s.DB.Where("conversation_id = ?", conversationId).Find(&messages).Error
+	if err != nil {
+		return nil, err
+	}
+	return messages, nil
 }
 
 // BreakConversation break conversation by set a stop key
@@ -113,17 +133,6 @@ func (s *SqliteStore) ResumeConversation(ctx context.Context, userId string, con
 	return nil
 }
 
-// CountConversation count all conversations from one user
-func (s *SqliteStore) CountConversation(ctx context.Context, userId string) (int, error) {
-	// var count int64
-	// err := s.DB.Model(&dto.ChatConversation{}).Where("user_id = ?", userId).Count(&count).Error
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// return int(count), nil
-	return 0, nil
-}
-
 // DeleteConversation delete conversation
 func (s *SqliteStore) DeleteConversation(ctx context.Context, userId string, conversationId string) error {
 	// err := s.DB.Where("user_id = ? AND conversation_id = ?", userId, conversationId).Delete(&dto.ChatConversation{}).Error
@@ -141,8 +150,7 @@ func (s *SqliteStore) DeleteConversation(ctx context.Context, userId string, con
 }
 
 func (s *SqliteStore) conversationKey(userId string, conversationId string) string {
-	// return fmt.Sprintf("ai:conversation:%s:%s", userId, conversationId)
-	return ""
+	return fmt.Sprintf("ai:conversation:%s:%s", userId, conversationId)
 }
 
 func (s *SqliteStore) conversationMessageKey(userId string, conversationId string) string {

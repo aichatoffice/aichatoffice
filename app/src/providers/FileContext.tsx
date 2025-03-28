@@ -21,7 +21,7 @@ interface FileContextType {
   filesLoading: boolean
   getFileById: (id: string) => Promise<FileItem>
   getServerUrl: () => Promise<string>
-  getConversation: (fileId: string) => Promise<string>
+  getConversation: (fileId: string) => Promise<any>
 }
 
 const FileContext = createContext<FileContextType | null>(null)
@@ -147,7 +147,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
       const data = await apiRequest({
         path: `/api/chat/${fileId}/conversation`,
       })
-      return data?.conversationId
+      return data
     } catch (error) {
       console.error('Error getting conversation:', error)
     }
