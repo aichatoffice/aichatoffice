@@ -6,6 +6,7 @@ import {
   FileText,
   Trash2,
   Loader2,
+  Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useIntl } from "react-intl"
 import Collapse from "@/assets/collapse.png"
+import { useNavigate } from "react-router-dom"
 
 interface ClientLayoutProps {
   onLanguageChange: (locale: string) => void;
@@ -35,6 +37,7 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
   const location = useLocation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [locale, setLocale] = useState(currentLocale)
+  const navigate = useNavigate()
 
   const handleNewChatClick = () => {
     fileInputRef.current?.click()
@@ -136,7 +139,7 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
           </ScrollArea>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200 mt-auto">
+          <div className="p-4 border-t border-gray-200 mt-auto flex justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Globe className="h-4 w-4" />
               <select
@@ -154,6 +157,9 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
                   中文
                 </option>
               </select>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Settings className="h-4 w-4 cursor-pointer" onClick={() => navigate("/setting")} />
             </div>
           </div>
         </div>

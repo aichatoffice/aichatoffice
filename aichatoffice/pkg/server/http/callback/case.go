@@ -185,14 +185,19 @@ type LLMConfig struct {
 }
 
 func AIConfig(c *gin.Context) {
-	openaiConfig := OpenAIConfig{}
-	econf.UnmarshalKey("openai", &openaiConfig)
-
+	aiConfig, err := invoker.AiConfigSvc.GetAIConfig(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "0",
+			"message": err.Error(),
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"code": 0,
 		"data": gin.H{
-			"aiIcon":  openaiConfig.AIIcon,
-			"llmList": openaiConfig.LLM,
+			"aiIcon":  econf.GetString("openai.aiIcon"),
+			"llmList": aiConfig,
 		},
 	})
 }

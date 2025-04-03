@@ -29,15 +29,22 @@ func NewSqliteStore() (*SqliteStore, error) {
 }
 
 func (s *SqliteStore) AutoMigrate() error {
+	// 文件存储
 	err := s.DB.AutoMigrate(&dto.File{})
 	if err != nil {
 		return err
 	}
+	// 对话存储
 	err = s.DB.AutoMigrate(&dto.ChatConversation{})
 	if err != nil {
 		return err
 	}
 	err = s.DB.AutoMigrate(&dto.ChatMessage{})
+	if err != nil {
+		return err
+	}
+	// ai 模型配置存储
+	err = s.DB.AutoMigrate(&dto.AiConfig{})
 	if err != nil {
 		return err
 	}

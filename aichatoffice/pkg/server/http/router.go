@@ -59,6 +59,12 @@ func ServeHTTP() *egin.Component {
 		chatRouters.POST("/:conversation_id/chat", api.Completions)
 	}
 
+	aiRouters := apiGroup.Group("/ai")
+	{
+		aiRouters.GET("/config", api.GetAIConfig)
+		aiRouters.POST("/config", api.UpdateAIConfig)
+	}
+
 	r.Use(middlewares.Serve("/", middlewares.EmbedFolder(ui.WebUI, "dist"), false))
 	r.Use(middlewares.Serve("/", middlewares.FallbackFileSystem(middlewares.EmbedFolder(ui.WebUI, "dist")), true))
 	return r

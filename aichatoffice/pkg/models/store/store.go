@@ -17,6 +17,11 @@ type FileStore interface {
 	GetFilesList(ctx context.Context) (files []dto.File, err error)
 }
 
+type AiConfigStore interface {
+	GetAIConfig(ctx context.Context) (aiConfig []dto.AiConfig, err error)
+	UpdateAIConfig(ctx context.Context, aiConfigs []dto.AiConfig) error
+}
+
 // ChatStore defines the abstraction of chat storage and retrieval
 type ChatStore interface {
 	NewConversation(ctx context.Context, userId string, conversationId string, fileGuid string) error

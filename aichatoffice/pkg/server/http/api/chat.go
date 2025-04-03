@@ -34,6 +34,13 @@ type ChatRequest struct {
 }
 
 func Completions(ctx *gin.Context) {
+	// 检查是否有ai配置
+	aiConfigs, err := invoker.AiConfigSvc.GetAIConfig(ctx)
+	if err != nil || len(aiConfigs) == 0 {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + ", 请先配置AI模型"})
+		return
+	}
+
 	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	ctx.Writer.Header().Set("Cache-Control", "no-cache")
 	ctx.Writer.Header().Set("Connection", "keep-alive")
@@ -42,7 +49,7 @@ func Completions(ctx *gin.Context) {
 
 	conversionId := ctx.Param("conversation_id")
 	chatRequest := ChatRequest{}
-	err := ctx.ShouldBindJSON(&chatRequest)
+	err = ctx.ShouldBindJSON(&chatRequest)
 	if err != nil {
 		elog.Error("should bind json", zap.Error(err))
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -62,7 +69,7 @@ func Completions(ctx *gin.Context) {
 	// todo，处理这些 id
 	userId := "111"
 
-	chatInput = "你好，你是谁"
+	// chatInput = "你好，你是谁"
 
 	// 对接 openai 协议
 	go invoker.ChatService.Chat(ctx.Request.Context(), userId, conversionId, chatInput, event)

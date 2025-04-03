@@ -1,28 +1,29 @@
 gateway:
-  title: 回调网关
-  endpoint: https://turbo-demo.shimorelease.com
+  title: "gatewayTitle"
+  endpoint: ""
 module:
   auth:
     index: 1
-    title: 文件鉴权
+    title: "moduleAuthTitle"
   preview:
     index: 2
-    title: 文件预览
+    title: "modulePreviewTitle"
   edit:
     index: 3
-    title: 文件编辑
+    title: "moduleEditTitle"
   chat:
     index: 4
-    title: AI聊天
+    title: "moduleAIChatTitle"
 
 apis:
   - in: auth
     name: verify_token
-    cn_name: 鉴权
+    cn_name: "apiVerifyTokenName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://a.b/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiVerifyTokenIntro"
+    help: "apiVerifyTokenHelp"
     request:
       method: GET
       path: /v1/callback/verify/${file_id}
@@ -31,31 +32,32 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
   - in: preview
     name: get_file
-    cn_name: 获取文件元信息
+    cn_name: "apiGetFileName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://a.b/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiGetFileIntro"
+    help: "apiGetFileHelp"
     request:
       method: GET
       path: /v1/callback/files/${file_id}
@@ -64,31 +66,32 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
   - in: preview
     name: get_file_download
-    cn_name: 获取文件下载地址
+    cn_name: "apiGetFileDownloadName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiGetFileDownloadIntro"
+    help: "apiGetFileDownloadHelp"
     request:
       method: GET
       path: /v1/callback/files/${file_id}/download
@@ -97,31 +100,32 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
   - in: preview
     name: get_file_watermark
-    cn_name: 获取水印信息
+    cn_name: "apiGetFileWatermarkName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiGetFileWatermarkIntro"
+    help: "apiGetFileWatermarkHelp"
     request:
       method: GET
       path: /v1/callback/files/${file_id}/watermark
@@ -130,31 +134,32 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
   - in: edit
     name: get_file_upload_addr
-    cn_name: 获取文件上传地址
+    cn_name: "apiGetFileUploadAddrName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiGetFileUploadAddrIntro"
+    help: "apiGetFileUploadAddrHelp"
     request:
       method: POST
       path: /v1/callback/files/${file_id}/upload/address
@@ -163,52 +168,53 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
         - in: body
           label: size
           name: size
-          description: 文档大小，单位 byte
+          description: "parameterSizeDesc"
           required: true
           schema:
             type: string
         - in: body
           label: content_type
           name: content_type
-          description: 文档的 MIME 类型
+          description: "parameterContentTypeDesc"
           required: true
           schema:
             type: string
         - in: body
           label: attachment_size
           name: attachment_size
-          description: 文档内包含的附件的大小，单位 byte
+          description: "parameterAttachmentSizeDesc"
           required: false
           schema:
             type: string
   - in: edit
     name: file_upload_complete
-    cn_name: 上传完成后回调通知上传结果
+    cn_name: "apiFileUploadCompleteName"
     enable: true
-    editable: true
+    editable: false
     required: true
-    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiFileUploadCompleteIntro"
+    help: "apiFileUploadCompleteHelp"
     request:
       method: POST
       path: /v1/callback/files/${file_id}/upload/complete
@@ -217,83 +223,84 @@ apis:
         - in: path
           label: file_id
           name: file_id
-          description: 文档唯一标识
+          description: "parameterFileIDDesc"
           required: true
           schema:
             type: string
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string
         - in: header
           label: user_query
           name: X-User-Query
-          description: 自定义请求参数，如：a=xxx&b=jack，选填参数
+          description: "parameterXUserQueryDesc"
           required: false
           schema:
             type: string
         - in: body
           label: request
           name: request
-          description: 获取上传地址时相同的请求
+          description: "parameterFileUploadCompleteRequestDesc"
           required: true
           schema:
             type: object
             properties:
               content_type:
                 type: string
-                description: 文档的 MIME 类型
+                description: "parameterContentTypeDesc"
               digest:
                 type: string
-                description: '文档校验和，`key`为算法，`value`为结果值，如：{"key": "value"}'
+                description: "parameterDigestDesc"
               is_manual:
                 type: boolean
-                description: 是否手动保存
+                description: "parameterIsManualDesc"
               name:
                 type: string
-                description: 文档名称
+                description: "parameterFileNameDesc"
               size:
                 type: string
-                description: 文件大小，单位 byte
+                description: "parameterSizeDesc"
             required:
               - name
               - size
         - in: body
           label: response
           name: response
-          description: 上传文档完成后，存储服务返回的 HTTP Response
+          description: "parameterFileUploadCompleteResponseDesc"
           required: true
           schema:
             type: object
             properties:
               body:
                 type: string
-                description: 上传文档时，存储服务返回的 HTTP Response Body 的 base64 编码
+                description: "parameterFileUploadCompleteResponseBodyDesc"
               headers:
                 type: string
-                description: 上传文档时，存储服务返回的 HTTP Response Header
+                description: "parameterFileUploadCompleteResponseHeadersDesc"
               status_code:
                 type: string
-                description: 上传文档时，存储服务返回的 HTTP Response Status
+                description: "parameterFileUploadCompleteResponseStatusCodeDesc"
             required:
               - status_code
         - in: body
           label: send_back_params
           name: send_back_params
-          description: 获取上传地址时，要求原样带回的额外参数
+          description: "parameterFileUploadCompleteSendBackParamsDesc"
           required: false
           schema:
             type: string
   - in: chat
     name: get_ai_config
-    cn_name: 获取 AI 配置
+    cn_name: "apiGetAIConfigName"
     enable: true
     editable: true
     required: true
-    intro: 说明 <a href="https://shimo.im/docs/Ee32mZPzedt92jA2" target="_blank">文档</a>
+    intro: "apiGetAIConfigIntro"
+    help: "apiGetAIConfigHelp"
     request:
       method: GET
       path: /v1/callback/chat/aiConfig
@@ -302,7 +309,7 @@ apis:
         - in: header
           label: token
           name: X-WebOffice-Token
-          description: 当前请求的用户凭证
+          description: "parameterXWebOfficeTokenDesc"
           required: true
           schema:
             type: string

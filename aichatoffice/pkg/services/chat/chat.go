@@ -18,14 +18,14 @@ import (
 
 type ChatSvc struct {
 	chatStore store.ChatStore
-	aiSvc     aisvc.AiSvc
+	AiSvc     aisvc.AiSvc
 	officeSvc officesvc.OfficeSvc
 }
 
 func NewChatSvc(chatStore store.ChatStore, aiSvc aisvc.AiSvc, officeSvc officesvc.OfficeSvc) *ChatSvc {
 	return &ChatSvc{
 		chatStore: chatStore,
-		aiSvc:     aiSvc,
+		AiSvc:     aiSvc,
 		officeSvc: officeSvc,
 	}
 }
@@ -127,7 +127,7 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 	}
 
 	// 调用 ai
-	c.aiSvc.CompletionsStream(chatInput, teeWriter)
+	c.AiSvc.CompletionsStream(chatInput, teeWriter)
 
 	// 记到数据库
 	go func(userId string, conversationId string) {

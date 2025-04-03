@@ -108,6 +108,10 @@ make server
 
 ```bash
 # Build the desktop application
+cd aichatoffice
+# Build the desktop application for the current platform
+make build-xxx
+
 cd app
 npm run build
 ```

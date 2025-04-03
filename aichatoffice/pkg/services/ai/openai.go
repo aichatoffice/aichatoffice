@@ -2,6 +2,7 @@ package aisvc
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -37,12 +38,23 @@ type OpenAiConfig struct {
 	OutputMaxToken int
 }
 
-func NewOpenAI() (OpenAISvc, error) {
-	//todo 走 yaml
+func NewOpenAI(configSvc *AiConfigSvc) (OpenAISvc, error) {
+	ctx := context.Background()
+	aiConfigs, err := configSvc.GetAIConfig(ctx)
+	if err != nil {
+		return OpenAISvc{}, fmt.Errorf("获取AI配置失败: %w", err)
+	}
+
+	// 假设我们使用第一个配置
+	if len(aiConfigs) == 0 {
+		return OpenAISvc{}, nil
+	}
+
+	config := aiConfigs[0]
 	aiConfig := OpenAiConfig{
-		Token:     "sk-xisjdsqkpwdypklaubsigiewuoxrkctrfynieiqwgxfetgtz",
-		TextModel: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
-		BaseUrl:   "https://api.siliconflow.cn/v1",
+		Token:     config.Token,
+		TextModel: config.TextModel,
+		BaseUrl:   config.BaseUrl,
 	}
 
 	elog.Info("final ai config", l.A("aiConfig", aiConfig))

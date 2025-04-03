@@ -2,6 +2,7 @@ import type React from "react"
 import { useNavigate } from "react-router-dom"
 import { createContext, useContext, useState, useEffect } from "react"
 import { isElectron, getIpcRenderer } from '../utils/electron'
+import { toast } from "sonner"
 
 interface FileItem {
   id: string
@@ -22,6 +23,8 @@ interface FileContextType {
   getFileById: (id: string) => Promise<FileItem>
   getServerUrl: () => Promise<string>
   getConversation: (fileId: string) => Promise<any>
+  getAiConfig: () => Promise<any>
+  updateAiConfig: (aiConfig: any) => Promise<any>
 }
 
 const FileContext = createContext<FileContextType | null>(null)
@@ -50,6 +53,12 @@ const apiRequest = async (options: {
     headers: options.headers,
     signal: options.signal,
   })
+  const ok = response.status >= 200 && response.status < 300
+  if (!ok) {
+    const error = await response.json()
+    toast.error(JSON.stringify(error))
+    throw new Error(error.message)
+  }
   // 如果 response 是 stream，则返回 stream
   if (isStream || response.status == 204) {
     return response
@@ -153,6 +162,22 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const getAiConfig = async () => {
+    const data = await apiRequest({
+      path: `/api/ai/config`,
+    })
+    return data
+  }
+
+  const updateAiConfig = async (aiConfig: any) => {
+    const data = await apiRequest({
+      method: 'POST',
+      path: `/api/ai/config`,
+      body: JSON.stringify(aiConfig),
+    })
+    return data
+  }
+
   useEffect(() => {
     getFile()
   }, [])
@@ -169,7 +194,9 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         filesLoading,
         getFileById,
         getServerUrl,
-        getConversation
+        getConversation,
+        getAiConfig,
+        updateAiConfig,
       }}
     >
       {children}

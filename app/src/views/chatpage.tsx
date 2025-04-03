@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info, Settings } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useParams } from "react-router-dom"
-import avatar from "@/assets/avatar.png"
 import { useIntl } from "react-intl"
 import { useFiles } from "@/providers/FileContext"
 import { useToast } from "@/components/ui/use-toast"
@@ -160,6 +159,8 @@ export default function DocumentChat() {
 
   // 格式化文本
   const formatMarkdownText = (text: string): string => {
+    if (!text) return ""
+
     let formattedText = text
 
     // 去除最开头的空行
@@ -202,7 +203,7 @@ export default function DocumentChat() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-white text-sm">
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -258,13 +259,6 @@ export default function DocumentChat() {
             {messages.length === 0 ? (
               <div className="space-y-4 text-sm">
                 <div className="flex gap-3">
-                  <img
-                    src={avatar || "/placeholder.svg"}
-                    alt="Chat Icon"
-                    width={28}
-                    height={28}
-                    className="object-cover flex-shrink-0 self-start"
-                  />
                   <div className="space-y-4">
                     <p>{f({ id: "chat.greeting.1" })}</p>
                     <p>{f({ id: "chat.greeting.2" })}</p>
@@ -299,19 +293,10 @@ export default function DocumentChat() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-2">
                 {messages.map((message, index) => (
                   <div key={message.id}>
                     <div className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-                      {message.role === "assistant" && !(messageStates[message.id]?.isStopped || messageStates[message.id]?.isError) && (
-                        <img
-                          src={avatar || "/placeholder.svg"}
-                          alt="Chat Icon"
-                          width={28}
-                          height={28}
-                          className="object-cover flex-shrink-0 self-start"
-                        />
-                      )}
                       <div className={`space-y-1 ${message.role === "user" ? "items-end" : ((messageStates[message.id]?.isStopped || messageStates[message.id]?.isError) ? "hidden" : "")} max-w-[calc(100%-40px)]`}>
                         <div
                           className={`rounded-2xl p-3 max-w-full ${message.role === "user"
@@ -385,13 +370,6 @@ export default function DocumentChat() {
                     {(status === "submitted" && message.role === "user" &&
                       message.id === messages[messages.length - 1].id) && (
                         <div className="flex gap-3 mt-2">
-                          <img
-                            src={avatar || "/placeholder.svg"}
-                            alt="Chat Icon"
-                            width={28}
-                            height={28}
-                            className="object-cover flex-shrink-0 self-start"
-                          />
                           <div className="flex gap-1 bg-gray-100 p-3 rounded-2xl">
                             <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></span>
                             <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
@@ -403,17 +381,16 @@ export default function DocumentChat() {
                     {((messageStates[message.id]?.isError || messageStates[message.id]?.isStopped)) && (
                       <div className="flex gap-3 mt-2">
                         <div className="flex items-center max-w-full">
-                          <img
-                            src={avatar || "/placeholder.svg"}
-                            alt="Chat Icon"
-                            width={28}
-                            height={28}
-                            className="object-cover flex-shrink-0 self-start"
-                          />
                           <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
-                              <Info className="w-4 h-4 text-[#f93a37]" />
-                              {messageStates[message.id]?.isError ? f({ id: "chat.error" }) : f({ id: "chat.retry" })}
+                            <div className="flex items-start gap-2 ml-2 p-3 rounded-2xl bg-[rgba(249,58,55,0.05)] border border-[rgba(249,58,55,0.15)] text-[#f93a37]">
+                              <Info className="w-4 h-4 text-[#f93a37] mt-1" />
+                              {messageStates[message.id]?.isError ? (
+                                <div>
+                                  {f({ id: "chat.error1" })}
+                                  <a href="#/setting" className="text-blue-300">{f({ id: "chat.aiConfig" })}</a>
+                                  {f({ id: "chat.error2" })}
+                                </div>
+                              ) : f({ id: "chat.retry" })}
                             </div>
                             <div className="flex items-center gap-1 ml-3">
                               <button className="p-1 hover:bg-gray-100 rounded">

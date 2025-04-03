@@ -107,7 +107,11 @@ make server
 ### 构建
 
 ```bash
-# 构建桌面应用
+# 本地构建桌面应用
+cd aichatoffice
+# 构建适应本地的 桌面应用
+make build-xxx
+
 cd app
 npm run build
 ```

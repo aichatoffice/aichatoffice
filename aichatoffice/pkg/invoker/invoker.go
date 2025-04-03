@@ -20,10 +20,12 @@ var (
 	FileService *filesvc.FileService
 	ChatService *chatsvc.ChatSvc
 	OfficeSvc   officesvc.OfficeSvc
+	AiConfigSvc *aisvc.AiConfigSvc
 
 	// store
-	FileStore store.FileStore
-	ChatStore store.ChatStore
+	FileStore     store.FileStore
+	ChatStore     store.ChatStore
+	AiConfigStore store.AiConfigStore
 )
 
 func Init() (err error) {
@@ -36,8 +38,10 @@ func Init() (err error) {
 	FileService = filesvc.NewFileService(FileStore)
 	FileService.InitCaseFile()
 
-	// todo 支持多种 ai 协议，可根据配置切换
-	aiSvc, err := aisvc.NewOpenAI()
+	AiConfigSvc = aisvc.NewAiConfigSvc(AiConfigStore)
+
+	// todo 支持多种 ai 协议，可根据配置切换, 目前只取了第一个 配置
+	aiSvc, err := aisvc.NewOpenAI(AiConfigSvc)
 	if err != nil {
 		return fmt.Errorf("service init ai failed: %w", err)
 	}
@@ -58,6 +62,7 @@ func initStore() (err error) {
 		}
 		FileStore = sqlite
 		ChatStore = sqlite
+		AiConfigStore = sqlite
 	default:
 		panic(fmt.Sprintf("store type %s not supported", econf.GetString("store.type")))
 	}
