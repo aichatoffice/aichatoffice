@@ -137,7 +137,12 @@ jobs:
           CSC_NAME: "Developer ID Application: Your Name (${{ secrets.APPLE_TEAM_ID }})"
           CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: npm run ${{ matrix.config.electron_args }}
+        run: |
+          # 验证证书是否正确导入
+          security find-identity -v -p codesigning build.keychain
+          
+          # 构建应用
+          npm run ${{ matrix.config.electron_args }}
         working-directory: ./app
 
       - name: Debug Release Info
