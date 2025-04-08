@@ -133,12 +133,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -n "$APPLE_ID" ]; then
-            npm run ${{ matrix.config.electron_args }} -- --mac-notarize
-          else
-            npm run ${{ matrix.config.electron_args }}
-          fi
+        run: npm run ${{ matrix.config.electron_args }}
         working-directory: ./app
 
       - name: Debug Release Info
