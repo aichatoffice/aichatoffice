@@ -140,6 +140,14 @@ jobs:
         run: npm run ${{ matrix.config.electron_args }}
         working-directory: ./app
 
+      - name: Notarize app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit dist_electron/*.dmg --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+
       - name: Debug Release Info
         run: |
           echo "Debug Release Info:"
