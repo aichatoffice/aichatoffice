@@ -146,7 +146,22 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          xcrun notarytool submit "${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          echo "开始公证过程..."
+          xcrun notarytool submit "${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait || {
+              echo "公证失败，获取详细信息..."
+              xcrun notarytool log $(xcrun notarytool submit "${{ github.workspace }}/app/dist_electron/AIChatOffice-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_ID_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" | grep "id:" | cut -d' ' -f2) \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_ID_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID"
+              exit 1
+            }
 
       - name: Debug Release Info
         run: |
