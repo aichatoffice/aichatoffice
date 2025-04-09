@@ -29,7 +29,8 @@
       "dist/**/*",
       "electron/**/*",
       "public/**/*",
-      "build/**/*"
+      "build/**/*",
+      "scripts/**/*"
     ],
     "extraResources": [
       {
