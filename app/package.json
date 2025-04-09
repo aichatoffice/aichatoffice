@@ -59,7 +59,7 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": true,
-      "identity": "Apple Distribution: ChuXin Tec Co., Ltd. (Z35T9799TW)",
+      "identity": "ChuXin Tec Co., Ltd.",
       "signIgnore": false
     },
     "win": {
