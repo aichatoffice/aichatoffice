@@ -81,6 +81,13 @@ export default {
   "ai.duplicateConfig": "重复的配置",
   "ai.requiredFields": "必填项未填写",
   "ai.applyConfigSuccess": "应用配置成功",
+  "ai.account": "账户",
+  "ai.warning": "免费限制次数已用完, 请升级至",
+  // user
+  "user.username": "用户名",
+  "user.email": "邮箱",
+  "user.upgradePro": "升级至Pro",
+  "user.logout": "退出登录",
   // common
   "common.copy": "复制",
   "common.copy.success": "已复制到剪贴板",

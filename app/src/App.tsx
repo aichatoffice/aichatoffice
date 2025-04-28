@@ -3,6 +3,7 @@ import ClientLayout from './layouts'
 import HomePage from './views/homepage'
 import ChatPage from './views/chatpage'
 import SettingPage from './views/settingpage'
+import LoginPage from './views/login'
 import { FileProvider } from './providers/FileContext'
 import { IntlProvider } from "react-intl"
 import zh from './locales/zh-CN'
@@ -24,6 +25,10 @@ export default function App() {
   const [locale, setLocale] = useState(defaultLocale);
 
   const router = createHashRouter([
+    {
+      path: '/login',
+      element: <LoginPage />
+    },
     {
       path: '/',
       element: (

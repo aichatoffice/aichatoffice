@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 // 定义允许的通道
-const validChannels = ['get-server-url']
+const validChannels = ['get-server-url', 'open-auth-window', 'get-store-value', 'set-store-value', 'delete-store-value', 'clear-store']
 
 // 只暴露一个统一的 API 接口
 contextBridge.exposeInMainWorld('electron', {
@@ -13,5 +13,5 @@ contextBridge.exposeInMainWorld('electron', {
   },
   on: (channel, callback) => {
     ipcRenderer.on(channel, (event, ...args) => callback(...args))
-  }
+  },
 }) 

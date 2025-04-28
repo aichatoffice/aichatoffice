@@ -3,7 +3,9 @@ package chatsvc
 import (
 	"context"
 	"fmt"
+	"net/http"
 
+	"github.com/gotomicro/cetus/l"
 	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
 	"go.uber.org/zap"
@@ -95,7 +97,7 @@ func (c ChatSvc) NewConversation(ctx context.Context, userId string, fileGuid st
 }
 
 // Chat AIChat方法
-func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string, chatInput string, event chan<- string) error {
+func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string, chatInput string, event chan<- string, isFree bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	// todo 改成 workflow
@@ -130,7 +132,7 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 	c.AiSvc.CompletionsStream(chatInput, teeWriter)
 
 	// 记到数据库
-	go func(userId string, conversationId string) {
+	go func(userId string, conversationId string, isFree bool) {
 		response := teeWriter.GetBuffer().String()
 
 		// 获取现有对话
@@ -178,7 +180,12 @@ func (c ChatSvc) Chat(ctx context.Context, userId string, conversationId string,
 				zap.Error(err),
 				zap.String("conversationId", conversationId))
 		}
-	}(userId, conversationId)
+
+		// 	免费次数更新
+		if isFree {
+			UserFreeTimes(userId)
+		}
+	}(userId, conversationId, isFree)
 
 	return nil
 }
@@ -194,4 +201,28 @@ func (c ChatSvc) GetConversation(ctx context.Context, userId string, fileGuid st
 
 func (c ChatSvc) DeleteConversation(ctx context.Context, userId string, fileGuid string) error {
 	return c.chatStore.DeleteConversation(ctx, userId, fileGuid)
+}
+
+func UserFreeTimes(userId string) {
+	if userId == "" {
+		elog.Error("userId not found:")
+		return
+	}
+	// 请求免费次数信息
+	req, err := http.NewRequest("PUT", fmt.Sprintf("http://localhost:9001/api/auth/%s/free", userId), nil)
+	if err != nil {
+		elog.Error("创建请求失败:", l.E(err))
+		return
+	}
+
+	// 创建客户端
+	client := &http.Client{}
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		elog.Error("请求失败:", l.E(err))
+		return
+	}
+	defer resp.Body.Close()
+	return
 }

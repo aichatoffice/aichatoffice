@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import * as pdfjsLib from 'pdfjs-dist'
 import Robot from "@/assets/robot.png"
 import { useChat } from '@ai-sdk/react';
+import { getUserInfo, setUserInfo } from "@/utils/electron"
 
 const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
 
@@ -36,6 +37,8 @@ export default function DocumentChat() {
 
   const [initialMessages, setInitialMessages] = useState([])
 
+  const [currentUserInfo, setCurrentUserInfo] = useState({ freeTimes: 0, id: "" })
+
   // 添加新的状态来跟踪每条消息的状态
   const [messageStates, setMessageStates] = useState<{
     [key: string]: {
@@ -60,7 +63,7 @@ export default function DocumentChat() {
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialMessages: initialMessages,
     initialInput: f({ id: "chat.summary" }),
-    api: `${serverUrl}/api/chat/${conversationId}/chat`,
+    api: `${serverUrl}/api/chat/${conversationId}/chat?userId=${currentUserInfo.id}`,
     experimental_prepareRequestBody: ({ messages, id, requestBody }) => {
       console.log("requestBody", requestBody)
       return {
@@ -68,10 +71,20 @@ export default function DocumentChat() {
         id: id,
         customKey: (requestBody as CustomRequestBody)?.customKey
       }
+    },
+    onResponse: () => {
+      debugger
+      const info = {
+        ...currentUserInfo,
+        freeTimes: currentUserInfo.freeTimes - 1
+      }
+      setUserInfo(info)
+      setCurrentUserInfo(info)
     }
   });
 
   useEffect(() => {
+    getFreeTimes()
     getServerUrl().then(result => {
       setServerUrl(result)
     })
@@ -121,6 +134,12 @@ export default function DocumentChat() {
       isSubscribed = false;
     };
   }, [documentId]);
+
+  const getFreeTimes = async () => {
+    const userInfo = await getUserInfo()
+    console.log("userInfo", userInfo)
+    setCurrentUserInfo(userInfo)
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -203,7 +222,7 @@ export default function DocumentChat() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white text-sm">
+    <div className="flex flex-col h-screen bg-white text-sm mt-0">
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -442,9 +461,10 @@ export default function DocumentChat() {
                       <option value={20}>15</option>
                     </select>
                   </div>
-
+                  {currentUserInfo.freeTimes <= 0 && (
+                    <div className="text-xs text-gray-400 w-40 text-center">{f({ id: "ai.warning" })} <a href="#/setting" className="text-blue-300">Pro</a></div>
+                  )}
                 </div>
-
                 <form onSubmit={(e) => handleSubmit(e, {
                   body: {
                     customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
@@ -454,6 +474,7 @@ export default function DocumentChat() {
                     placeholder={f({ id: "chat.placeholder" })}
                     name="prompt"
                     value={input}
+                    disabled={currentUserInfo.freeTimes <= 0}
                     onChange={(e) => {
                       handleInputChange(e);
                       setCurrentInput(e.target.value)
@@ -474,7 +495,7 @@ export default function DocumentChat() {
                     type="submit"
                     className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
                     onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
-                    disabled={!(input || status !== "ready")}
+                    disabled={!(input || status !== "ready") || currentUserInfo.freeTimes <= 0}
                   >
                     {status == "submitted" || status == "streaming" ? (
                       <Square className="h-4 w-4" />

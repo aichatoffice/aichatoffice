@@ -1,15 +1,18 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
+	"aichatoffice/pkg/invoker"
+	aisvc "aichatoffice/pkg/services/ai"
 	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/cetus/l"
 	"github.com/gotomicro/ego/core/elog"
 	"go.uber.org/zap"
-
-	"aichatoffice/pkg/invoker"
 )
 
 // ContentPart 表示消息内容的一部分
@@ -36,9 +39,14 @@ type ChatRequest struct {
 func Completions(ctx *gin.Context) {
 	// 检查是否有ai配置
 	aiConfigs, err := invoker.AiConfigSvc.GetAIConfig(ctx)
+	userId := ctx.Query("userId")
+	var isFree bool
 	if err != nil || len(aiConfigs) == 0 {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + ", 请先配置AI模型"})
-		return
+		if !CheckFreeTimes(userId) {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + ", 暂无免费次数, 请先配置AI模型"})
+			return
+		}
+		isFree = true
 	}
 
 	ctx.Writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
@@ -66,13 +74,10 @@ func Completions(ctx *gin.Context) {
 
 	event := make(chan string)
 
-	// todo，处理这些 id
-	userId := "111"
-
 	// chatInput = "你好，你是谁"
 
 	// 对接 openai 协议
-	go invoker.ChatService.Chat(ctx.Request.Context(), userId, conversionId, chatInput, event)
+	go invoker.ChatService.Chat(ctx.Request.Context(), userId, conversionId, chatInput, event, isFree)
 
 	ctx.Stream(func(w io.Writer) bool {
 		e, ok := <-event
@@ -125,4 +130,56 @@ func GetConversation(ctx *gin.Context) {
 		"conversationId": conversation.ConversationId,
 		"messages":       conversation.Messages,
 	})
+}
+
+type UserInfo struct {
+	FreeTimes int64 `json:"freeTimes"`
+}
+
+type AIConfig struct {
+	Token     string `json:"token"`
+	TextModel string `json:"textModel"`
+	BaseUrl   string `json:"baseUrl"`
+}
+
+type FreeConfig struct {
+	User UserInfo `json:"user"`
+	AI   AIConfig `json:"ai"`
+}
+
+func CheckFreeTimes(userId string) bool {
+	if userId == "" {
+		return false
+	}
+	// 请求免费次数信息
+	resp, err := http.Get(fmt.Sprintf("http://localhost:9001/api/auth/%s/free/config", userId))
+	if err != nil {
+		elog.Error("Request failed:", l.E(err))
+		return false
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if err != nil {
+		elog.Error("Read body failed:", l.E(err))
+		return false
+	}
+	var fConfig FreeConfig
+	err = json.Unmarshal(body, &fConfig)
+	if err != nil {
+		elog.Error("fConfig unmarshal failed:", l.E(err))
+		return false
+	}
+	if fConfig.User.FreeTimes <= 0 {
+		return false
+	}
+	// 重新初始化ai配置
+	openAIManager := aisvc.OpenAISvc{}
+	openAIManager.LoadConfig(aisvc.OpenAiConfig{
+		Token:     fConfig.AI.Token,
+		TextModel: fConfig.AI.TextModel,
+		BaseUrl:   fConfig.AI.BaseUrl,
+	})
+	invoker.ChatService.AiSvc = openAIManager
+	return true
 }

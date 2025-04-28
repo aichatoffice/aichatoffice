@@ -60,11 +60,11 @@ func NewOpenAI(configSvc *AiConfigSvc) (OpenAISvc, error) {
 	elog.Info("final ai config", l.A("aiConfig", aiConfig))
 
 	openAIManager := OpenAISvc{}
-	openAIManager.loadConfig(aiConfig)
+	openAIManager.LoadConfig(aiConfig)
 	return openAIManager, nil
 }
 
-func (o *OpenAISvc) loadConfig(aiConfig OpenAiConfig) {
+func (o *OpenAISvc) LoadConfig(aiConfig OpenAiConfig) {
 	o.OpenAiConfig = aiConfig
 
 	goopenaiConfig := openai.DefaultConfig(o.OpenAiConfig.Token)

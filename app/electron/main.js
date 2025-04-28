@@ -1,4 +1,5 @@
 import { app, protocol, net, BrowserWindow, screen, ipcMain } from 'electron'
+import Store from 'electron-store'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import url from 'node:url'
@@ -16,7 +17,7 @@ let mainWindow
 const appDir = path.dirname(app.getAppPath())
 const isDevEnv = process.env.NODE_ENV === "development"
 const appVer = app.getVersion()
-let kernelPort = 0 // 本地调试时需要修改为本地后服务端口
+let kernelPort = 9011 // 本地调试时需要修改为本地后服务端口
 let kernelSDKPort = 0
 let governorApiPort = 0
 let grpcPort = 0
@@ -39,6 +40,8 @@ remote.initialize()
 
 // 添加新的变量来追踪 dock 点击事件
 let isQuitting = false;
+
+const storeInstance = new Store()
 
 const isOpenAsHidden = function () {
   return 1 === workspaces.length && openAsHidden;
@@ -64,9 +67,119 @@ ipcMain.handle('get-server-url', () => {
   return getServer()
 })
 
+// 注册所有 store 相关的 IPC 处理程序
+function registerStoreHandlers() {
+  // 获取特定键的值
+  ipcMain.handle('get-store-value', async (event, key) => {
+    try {
+      return storeInstance.get(key);
+    } catch (error) {
+      writeLog(`获取 store 值失败: ${error.message}`);
+      throw error;
+    }
+  });
+
+  // 设置特定键的值
+  ipcMain.handle('set-store-value', async (event, key, value) => {
+    try {
+      console.log('set-store-value', key, value);
+      storeInstance.set(key, value);
+      return true;
+    } catch (error) {
+      writeLog(`设置 store 值失败: ${error.message}`);
+      throw error;
+    }
+  });
+
+  // 删除特定键
+  ipcMain.handle('delete-store-value', async (event, key) => {
+    try {
+      storeInstance.delete(key);
+      return true;
+    } catch (error) {
+      writeLog(`删除 store 值失败: ${error.message}`);
+      throw error;
+    }
+  });
+
+  // 清除所有数据
+  ipcMain.handle('clear-store', async () => {
+    try {
+      storeInstance.clear();
+      return true;
+    } catch (error) {
+      writeLog(`清除 store 失败: ${error.message}`);
+      throw error;
+    }
+  });
+}
+
+// ipcMain.handle('open-auth-window', async (event, options) => {
+//   const { url, width, height } = options;
+//   return new Promise((resolve, reject) => {
+//     const authWindow = new BrowserWindow({
+//       width: width || 800,
+//       height: height || 600,
+//       frame: true,
+//       parent: mainWindow,
+//       webPreferences: {
+//         nodeIntegration: true,
+//         contextIsolation: false,
+//       },
+//       resizable: false,
+//       minimizable: false,
+//       maximizable: false,
+//       alwaysOnTop: true,
+//     });
+//     let isResolved = false;
+//     authWindow.loadURL(url).then(() => {
+//       authWindow.show();
+//       authWindow.focus();
+//     });
+//     const handleUrl = (targetUrl) => {
+//       console.log('导航到:', targetUrl);
+//       const parsedUrl = new URL(targetUrl);
+//       const origin = parsedUrl.origin;
+
+//       if (origin === 'http://localhost:9001') {
+//         const searchParams = parsedUrl.searchParams;
+//         const error = searchParams.get('error');
+//         const code = searchParams.get('code');
+//         const state = searchParams.get('state');
+
+//         if (error) {
+//           if (!isResolved) {
+//             isResolved = true;
+//             authWindow.close();
+//             reject(new Error(`登录失败: ${error}`));
+//           }
+//         } else if (code && state) {
+//           if (!isResolved) {
+//             isResolved = true;
+//             authWindow.close();
+//             resolve({ success: true, code, state });
+//           }
+//         }
+//       }
+//     };
+
+//     authWindow.webContents.on('will-redirect', (event, url) => handleUrl(url));
+//     authWindow.webContents.on('will-navigate', (event, url) => handleUrl(url));
+
+//     authWindow.on('closed', () => {
+//       if (!isResolved) {
+//         reject(new Error('用户取消了登录'));
+//       }
+//     });
+//   });
+// });
+
 app.whenReady().then(() => {
   writeLog("start server: " + appDir);
   writeLog("start server dirname: " + __dirname);
+
+  // 注册 store 处理程序
+  registerStoreHandlers();
 
   // 添加 dock 点击事件处理
   app.on('activate', () => {
@@ -601,7 +714,15 @@ const initMainWindow = () => {
       additionalArguments: [`--js-flags=--max-old-space-size=8192`],
     },
     icon: path.join(appDir, "public", "avatar.png"),
+    frame: false,  // 去掉默认窗口边框和标题栏
+    titleBarStyle: 'hidden',  // 隐藏原生的标题栏
+    titleBarOverlay: {
+      color: '#ffffff',        // 设置标题栏背景色为白色
+      symbolColor: '#000000',  // 设置窗口控制按钮的颜色
+      height: 30               // 设置标题栏的高度
+    },
   });
+
   remote.enable(mainWindow.webContents);
   if (resetToCenter) {
     mainWindow.center();
@@ -1172,3 +1293,4 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+

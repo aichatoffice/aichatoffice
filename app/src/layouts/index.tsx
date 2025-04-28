@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useFiles } from "@/providers/FileContext"
 import { useLocation, Outlet } from "react-router-dom"
 import { Link } from "react-router-dom"
@@ -24,6 +24,7 @@ import {
 import { useIntl } from "react-intl"
 import Collapse from "@/assets/collapse.png"
 import { useNavigate } from "react-router-dom"
+import { isElectron, getUserInfo } from "@/utils/electron"
 
 interface ClientLayoutProps {
   onLanguageChange: (locale: string) => void;
@@ -39,6 +40,34 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
   const [locale, setLocale] = useState(currentLocale)
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const checkUserInfo = async () => {
+      let userInfo = null
+      if (isElectron()) {
+        // 在 Electron 环境中从 electron-store 获取用户信息
+        try {
+          userInfo = await getUserInfo()
+          if (!userInfo) {
+            throw new Error('用户信息获取失败');
+          }
+        } catch (error) {
+          console.error('获取用户信息失败:', error)
+        }
+      } else {
+        // 在浏览器环境中从 localStorage 获取用户信息
+        userInfo = localStorage.getItem('user')
+      }
+      console.log(userInfo, 'userInfo');
+      if (!userInfo) {
+        navigate('/login')
+      } else {
+        navigate('/')
+      }
+    }
+
+    checkUserInfo()
+  }, [navigate])
+
   const handleNewChatClick = () => {
     fileInputRef.current?.click()
   }
@@ -52,11 +81,15 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
 
   return (
     <div className="flex min-h-screen">
+      {isElectron() && (
+        <div className="fixed top-0 left-0 right-0 h-8 flex items-center justify-between px-4 z-50" id="title-bar">
+        </div>
+      )}
       <Button
         variant="ghost"
         size="icon"
         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        className={`fixed top-3 ${isSidebarCollapsed ? 'left-8' : 'left-54'} z-50 bg-white hover:bg-gray-200 lg:flex hidden rounded-2xl`}
+        className={`fixed top-3 ${isSidebarCollapsed ? 'left-8' : 'left-54'} z-50 bg-white hover:bg-gray-200 lg:flex hidden rounded-2xl ${isElectron() ? 'mt-8' : ''}`}
       >
         <img
           src={Collapse}
@@ -65,7 +98,7 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
         />
       </Button>
       <div className={`${isSidebarCollapsed ? "w-0" : "w-65"} flex-col border-r border-gray-200 fixed h-screen bg-white transition-all duration-300 ease-in-out overflow-hidden`}>
-        <div className="relative h-full flex flex-col">
+        <div className={`relative flex flex-col ${isElectron() ? 'mt-4 h-[calc(100vh-18px)]' : 'h-full'}`}>
 
           {/* Header */}
           <div className="p-4 border-b border-gray-200">

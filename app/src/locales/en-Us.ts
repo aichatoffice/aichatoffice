@@ -81,6 +81,13 @@ export default {
   "ai.duplicateConfig": "duplicate config",
   "ai.requiredFields": "required fields",
   "ai.applyConfigSuccess": "apply config success",
+  "ai.account": "Account",
+  "ai.warning": "The free limit has been used up, please upgrade to",
+  // user
+  "user.username": "username",
+  "user.email": "email",
+  "user.isPro": "Upgrade to Pro",
+  "user.logout": "Logout",
   // common
   "common.copy": "Copy",
   "common.copy.success": "Copied to clipboard",

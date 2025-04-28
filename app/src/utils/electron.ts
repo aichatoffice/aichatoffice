@@ -15,4 +15,29 @@ export const getIpcRenderer = (): IpcRenderer | null => {
     return window.electron;
   }
   return null;
-}; 
+};
+
+export const getUserInfo = async () => {
+  const ipcRenderer = getIpcRenderer();
+  if (!ipcRenderer) {
+    return null
+  }
+  const userInfo = await ipcRenderer.invoke('get-store-value', 'user')
+  return userInfo
+};
+
+export const setUserInfo = async (userInfo: any) => {
+  const ipcRenderer = getIpcRenderer();
+  if (!ipcRenderer) {
+    return null
+  }
+  await ipcRenderer.invoke('set-store-value', 'user', userInfo)
+}
+
+export const logout = async () => {
+  const ipcRenderer = getIpcRenderer();
+  if (!ipcRenderer) {
+    return null
+  }
+  await ipcRenderer.invoke('clear-store')
+};

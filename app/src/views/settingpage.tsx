@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Bot, ArrowRight, Trash } from "lucide-react"
+import { Plus, Bot, ArrowRight, Trash, User } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useIntl } from "react-intl"
 import { toast } from "sonner"
 import { useFiles } from "@/providers/FileContext"
+import { getUserInfo, logout } from "@/utils/electron"
+import { useNavigate } from "react-router-dom"
 interface AIConfig {
   baseUrl: string
   textModel: string
@@ -21,10 +23,19 @@ interface AIConfig {
   outputMaxToken: number
 }
 
+interface UserInfo {
+  id: number
+  username: string
+  email: string
+  isPro: boolean
+}
+
 export default function SettingPage() {
+  const navigate = useNavigate()
   const [configs, setConfigs] = useState<AIConfig[]>([])
   const { formatMessage: f } = useIntl()
   const { getAiConfig, updateAiConfig } = useFiles()
+  const [userInfo, setUserInfo] = useState<UserInfo>()
 
   const fileds = [
     {
@@ -73,6 +84,9 @@ export default function SettingPage() {
     getAiConfig().then((data) => {
       setConfigs(data)
     })
+    getUserInfo().then((data) => {
+      setUserInfo(data)
+    })
   }, [])
 
   const handleAddConfig = () => {
@@ -112,7 +126,6 @@ export default function SettingPage() {
         toast.error(`${f({ id: "ai.duplicateConfig" })}: ${duplicateDetails.join('; ')}`);
         return;
       }
-
 
       // 2. 检查必填项是否缺失
       const missingFieldsMap: Record<number, string[]> = {}; // 记录每个配置项缺失的字段
@@ -156,11 +169,17 @@ export default function SettingPage() {
     setConfigs(newConfigs)
   }
 
+  const handleLogout = () => {
+    logout()
+    navigate('/login');
+  }
+
   return (
     <div className="container mx-auto p-6 h-[100vh]">
       <Tabs defaultValue="ai" className="w-full h-full">
         <TabsList className=" w-full grid-cols-1 flex gap-4">
-          <TabsTrigger value="ai" className="rounded-full"> <Bot className="h-4 w-4 mr-2" />AI</TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-full cursor-pointer"> <Bot className="h-4 w-4 mr-2 " />AI</TabsTrigger>
+          <TabsTrigger value="account" className="rounded-full cursor-pointer"> <User className="h-4 w-4 mr-2" />{f({ id: "ai.account" })}</TabsTrigger>
         </TabsList>
         <TabsContent value="ai" className="h-[calc(100%-30px)]">
           <div className="space-y-4 h-full flex flex-col">
@@ -217,7 +236,21 @@ export default function SettingPage() {
             </div>
           </div>
         </TabsContent>
+        <TabsContent value="account" className="h-[calc(100%-30px)]">
+          <div className="space-y-4 h-full flex flex-col w-full items-center mt-10 text-sm">
+            <div className="space-y-4 overflow-y-auto">
+              <div className="text-gray-500">{f({ id: "user.username" })}: {userInfo?.username}</div>
+              <div className="text-gray-500">{f({ id: "user.email" })}: {userInfo?.email}</div>
+              <div>
+                <button className="bg-gray-800 text-white rounded-xl cursor-pointer p-2">{f({ id: "user.upgradePro" })}</button>
+                <button className="bg-white-800 text-black rounded-full cursor-pointer p-2" onClick={handleLogout}>{f({ id: "user.logout" })}</button>
+              </div>
+
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
+
     </div>
   )
 }
