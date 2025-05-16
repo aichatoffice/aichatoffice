@@ -6,12 +6,20 @@ import {
   FileText,
   Trash2,
   Loader2,
-  Settings,
+  Settings as SettingsIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useState, useRef, useEffect } from "react"
 import { useFiles } from "@/providers/FileContext"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useLocation, Outlet } from "react-router-dom"
 import { Link } from "react-router-dom"
 import { formatDate } from "@/lib/utils"
@@ -22,23 +30,29 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useIntl } from "react-intl"
-import Collapse from "@/assets/collapse.png"
+import Collapse from "@/assets/icon/collapse.png"
+import Chat from "@/assets/icon/chat.png"
+import ppt from "@/assets/file/ppt.png"
+import word from "@/assets/file/word.png"
+import excel from "@/assets/file/excel.png"
+import pdf from "@/assets/file/pdf.png"
+import Logo from "@/assets/logo.png"
+import avatar from "@/assets/icon/avatar.png"
 import { useNavigate } from "react-router-dom"
 import { isElectron, getUserInfo } from "@/utils/electron"
+import SettingsDialog from "@/views/settings/settings"
+import { useLanguage } from "@/providers/LanguageContext"
 
-interface ClientLayoutProps {
-  onLanguageChange: (locale: string) => void;
-  currentLocale: string;
-}
-
-function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutProps) {
+function ClientLayoutContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const { formatMessage: f } = useIntl()
   const { files, uploadFile, deleteFile, filesLoading } = useFiles()
   const location = useLocation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [locale, setLocale] = useState(currentLocale)
+  const { locale } = useLanguage()
   const navigate = useNavigate()
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const checkUserInfo = async () => {
@@ -61,6 +75,7 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
       if (!userInfo) {
         navigate('/login')
       } else {
+        setUser(JSON.parse(userInfo))
         navigate('/')
       }
     }
@@ -79,40 +94,73 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
     }
   }
 
+  const getFileIcon = (name: string) => {
+    switch (name.substring(name.lastIndexOf('.') + 1)) {
+      case "doc":
+      case "docx":
+        return word
+      case "ppt":
+      case "pptx":
+        return ppt
+      case "xls":
+      case "xlsx":
+        return excel
+      case "pdf":
+        return pdf
+    }
+  }
+
   return (
     <div className="flex min-h-screen">
       {isElectron() && (
         <div className="fixed top-0 left-0 right-0 h-8 flex items-center justify-between px-4 z-50" id="title-bar">
         </div>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        className={`fixed top-3 ${isSidebarCollapsed ? 'left-8' : 'left-54'} z-50 bg-white hover:bg-gray-200 lg:flex hidden rounded-2xl ${isElectron() ? 'mt-8' : ''}`}
-      >
-        <img
-          src={Collapse}
-          alt="collapse"
-          className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`}
-        />
-      </Button>
-      <div className={`${isSidebarCollapsed ? "w-0" : "w-65"} flex-col border-r border-gray-200 fixed h-screen bg-white transition-all duration-300 ease-in-out overflow-hidden`}>
-        <div className={`relative flex flex-col ${isElectron() ? 'mt-4 h-[calc(100vh-18px)]' : 'h-full'}`}>
-
+      <div className={`${isSidebarCollapsed ? "w-16" : "w-62"} flex-col fixed h-screen bg-white transition-all duration-300 ease-in-out overflow-hidden`}>
+        <div className={`relative flex flex-col ${isElectron() ? 'mt-4 h-[calc(100vh-18px)]' : 'h-full'} bg`}>
           {/* Header */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center gap-2 mb-8">
-              <MessageSquarePlus className="h-6 w-6 text-gray-700" />
-              <Link to="/" className="text-xl font-medium text-gray-800">{f({ id: "chatOffice" })}</Link>
+          <div className={`m-2 mb-0 p-2 pb-4 border-b border-color ${isSidebarCollapsed ? 'flex flex-col items-center' : ''}`}>
+            <div className={`flex items-center gap-2 mb-${isSidebarCollapsed ? '2' : '4'} ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+              <div className="flex items-center gap-2">
+                <img src={Logo} alt="logo" className="w-8 h-8 mr-2" />
+                {!isSidebarCollapsed && <Link to="/" className="text-[18px] font-medium text-gray-800">{f({ id: "chatOffice" })}</Link>}
+              </div>
+              {!isSidebarCollapsed && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  className="hover:bg-[#6B6CFF1A] rounded-full"
+                >
+                  <img
+                    src={Collapse}
+                    alt="collapse"
+                    className="w-7 h-7 transition-transform duration-300"
+                  />
+                </Button>
+              )}
             </div>
+            {isSidebarCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="w-full mb-2 hover:bg-[#6B6CFF1A] rounded-full"
+              >
+                <img
+                  src={Collapse}
+                  alt="collapse"
+                  className="w-7 h-7 transition-transform duration-300 rotate-180"
+                />
+              </Button>
+            )}
             <Button
-              className="bg-gray-700 hover:bg-gray-800 rounded-xl text-white transition-all duration-200 transform hover:scale-[1.02] w-full"
+              className={`transition-all duration-200 transform hover:scale-[1.02] ${isSidebarCollapsed ? 'w-10 px-0' : 'w-full'} text-[14px]`}
               size="lg"
               onClick={handleNewChatClick}
             >
-              <MessageSquarePlus className="mr-2 h-4 w-4" />
-              {f({ id: "newChat" })}
+              <img src={Chat} alt="chat" className="h-[21px]" />
+              {!isSidebarCollapsed && f({ id: "newChat" })}
             </Button>
             <input
               type="file"
@@ -123,92 +171,117 @@ function ClientLayoutContent({ onLanguageChange, currentLocale }: ClientLayoutPr
             />
           </div>
           {/* Scrollable File List */}
-          <ScrollArea className="flex-1  w-full px-2 custom-scrollbar">
-            <div className="py-4 space-y-1 w-full">
-              <h3 className="text-sm font-semibold text-gray-400 mb-3 mt-1 px-2">{f({ id: "recentFiles" })}</h3>
-              {filesLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-300 mt-20" />
+          {
+            !isSidebarCollapsed && (
+              <ScrollArea className="flex-1 w-full px-2 custom-scrollbar">
+                <div className="py-4 space-y-1 w-full">
+                  {!isSidebarCollapsed && <h3 className="text-sm text-[#41464B99] mb-2 px-2 text-[14px]">{f({ id: "recentFiles" })}</h3>}
+                  {filesLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-300 mt-20" />
+                    </div>
+                  ) : (
+                    files.map((file) => {
+                      const isActive = location.pathname === `/chat/${file.id}`
+                      return (
+                        <Link
+                          key={file.id}
+                          to={`/chat/${file.id}`}
+                          className={`w-full p-2 rounded-2xl hover:bg-[#6B6CFF33] transition-all duration-200 text-left group flex items-center gap-3 ${isActive ? "bg-[#6B6CFF33]" : ""}`}
+                        >
+                          <img src={getFileIcon(file.name)} alt="file" className="h-[26px]" />
+                          {!isSidebarCollapsed && (
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between max-w-full">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <p className={`text-[13px] truncate max-w-[165px] text-gray-700 font-medium mb-0.5`}>
+                                        {file.name || f({ id: "noTitle" })}
+                                      </p>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-gray-900 text-[12px] truncate text-white border-gray-900">
+                                      {file.name || f({ id: "noTitle" })}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                              <p className="text-xs text-gray-400">{formatDate(file.create_time, locale === 'zh-CN' ? 'zh' : 'en')}</p>
+                            </div>
+                          )}
+                          {!isSidebarCollapsed && (
+                            <Trash2
+                              className="h-4 w-4 flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                deleteFile(file.id);
+                              }}
+                            />
+                          )}
+                        </Link>
+                      )
+                    })
+                  )}
                 </div>
-              ) : (
-                files.map((file) => {
-                  const isActive = location.pathname === `/chat/${file.id}`
-                  return (
-                    <Link
-                      key={file.id}
-                      to={`/chat/${file.id}`}
-                      className={`w-full p-2 rounded-2xl hover:bg-gray-100 transition-all duration-200 text-left group flex items-center gap-3 ${isActive ? "bg-gray-100" : ""}`}
-                    >
-                      <FileText className={`h-5 w-5 flex-shrink-0 ${isActive ? "text-gray-700" : "text-gray-500"} group-hover:text-gray-700 transition-colors`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between max-w-full">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className={`text-sm truncate max-w-[165px] text-gray-700 font-medium`}>
-                                  {file.name || f({ id: "noTitle" })}
-                                </p>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-gray-900 text-sm truncate text-white border-gray-900">
-                                {file.name || f({ id: "noTitle" })}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <p className="text-xs text-gray-400">{formatDate(file.create_time, locale === 'zh-CN' ? 'zh' : 'en')}</p>
-                      </div>
-                      <Trash2
-                        className="h-4 w-4 flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          deleteFile(file.id);
-                        }}
-                      />
-                    </Link>
-                  )
-                })
-              )}
-            </div>
-          </ScrollArea>
-
+              </ScrollArea>
+            )
+          }
           {/* Footer */}
-          <div className="p-4 border-t border-gray-200 mt-auto flex justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Globe className="h-4 w-4" />
-              <select
-                className="bg-transparent outline-none text-gray-700 cursor-pointer"
-                value={locale}
-                onChange={(e) => {
-                  setLocale(e.target.value)
-                  onLanguageChange(e.target.value)
-                }}
+          <div className="mt-auto">
+            <div className="m-2 border-b border-color text-[#41464B99]">
+              <div
+                className={`flex p-2 ${isSidebarCollapsed ? 'justify-center' : 'pr-4 pl-4'} mb-1 rounded-2xl items-center gap-2 hover:bg-[#6B6CFF1A] hover:text-[#41464B] transition-all duration-200 cursor-pointer`}
+                onClick={() => setSettingsOpen(true)}
               >
-                <option value="en-US" className="text-black">
-                  English
-                </option>
-                <option value="zh-CN" className="text-black">
-                  中文
-                </option>
-              </select>
+                <SettingsIcon className="h-4 w-4 cursor-pointer" />
+                {!isSidebarCollapsed && <span className="text-[14px]">{f({ id: "settings.title" })}</span>}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Settings className="h-4 w-4 cursor-pointer" onClick={() => navigate("/setting")} />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="w-full focus-visible:outline-none">
+                <div className={`m-2 mt-1 flex rounded-2xl items-center gap-2 p-[10px] hover:bg-[#6B6CFF1A] hover:text-[#41464B] transition-all duration-200 cursor-pointer ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                  <img src={avatar} alt="avatar" className="w-8 h-8 rounded-full" />
+                  {!isSidebarCollapsed && <span className="text-[14px]">{user?.username}</span>}
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>{f({ id: "ai.account" })}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/login')}>{f({ id: "user.logout" })}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </div >
+      </div>
       {/* Main Content */}
       < div
-        className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "ml-0" : "ml-66"}`
+        className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "ml-16" : "ml-62"}`
         }
       >
         <Outlet />
       </div >
+
+      {/* Settings Dialog */}
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} defaultActiveMenu="account" />
     </div>
   )
 }
 
-export default function ClientLayout({ onLanguageChange, currentLocale }: ClientLayoutProps) {
-  return <ClientLayoutContent onLanguageChange={onLanguageChange} currentLocale={currentLocale} />
+import { IntlProvider } from "react-intl"
+import zh from '@/locales/zh-CN'
+import en from '@/locales/en-Us'
+
+const messages: Record<string, any> = {
+  'zh-CN': zh,
+  'en-US': en
+}
+
+export default function ClientLayout() {
+  const { locale } = useLanguage()
+  useEffect(() => {
+    console.log(locale, 'locale')
+  }, [locale])
+  return <IntlProvider locale={locale} messages={messages[locale]} defaultLocale="en-US">
+    <ClientLayoutContent />
+  </IntlProvider>
 }
 

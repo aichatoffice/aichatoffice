@@ -36,12 +36,77 @@
 
     --radius: 0.5rem;
   }
+
+  .bg {
+    background: linear-gradient(177.17deg, #E3E6FF 0%, #EEF2FF 25.11%, #EEF2FF 49.64%, #EEF2FF 75.49%, #E3E6FF 100%);
+  }
+
+  .bg-hover {
+    background: #6B6CFF33
+  }
+
+  .border-color {
+    border-color: #41464B1A;
+  }
+
+  .bg-primary {
+    background-color: #6B6CFF;
+  }
+
+  .bg-primary-gradient {
+    background: linear-gradient(90deg, #9A6BFF 0%, #6B6CFF 100%);
+  }
+
+  .bg-primary-hover {
+    background-color: #8989FF;
+  }
+
+  .text-primary-foreground {
+    color: #fff;
+  }
+
+  .bg-popover {
+    background-color: #fff;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #bfbfea transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.5);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 body {
-  color: rgb(var(--foreground));
+  color: #41464B;
   overflow-x: hidden;
   font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+
+  button {
+    cursor: pointer;
+  }
+
+  button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
 }
 
 /* New animations and styles */
@@ -160,11 +225,11 @@ body {
 }
 
 .bg-pattern-left {
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23666666' fill-opacity='0.1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e8ecf7' fill-opacity='1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .bg-pattern-right {
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23666666' fill-opacity='0.1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e8ecf7' fill-opacity='1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
   transform: scaleX(-1);
 }
 

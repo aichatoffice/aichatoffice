@@ -95,7 +95,7 @@ export default function Home() {
             />
             <label
               htmlFor="file-upload"
-              className="block w-full aspect-[16/9] max-w-4xl mx-auto rounded-3xl border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-gray-50 p-12 cursor-pointer transform hover:scale-[1.01]"
+              className="block w-full aspect-[16/9] max-w-4xl mx-auto rounded-3xl border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-[#e3e6ff59] p-12 cursor-pointer transform hover:scale-[1.01]"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -124,8 +124,8 @@ export default function Home() {
               }}
             >
               <div className="h-full flex flex-col items-center justify-center gap-4">
-                <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
-                  <Upload className="h-8 w-8 text-gray-700" />
+                <div className="h-16 w-16 rounded-full flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                  <Upload className="h-8 w-8 text-[#6B6CFF]" />
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-medium mb-2 text-gray-700">{f({ id: "homepage.uploadFiles" })}</p>
@@ -141,7 +141,7 @@ export default function Home() {
           <div className="flex gap-4 justify-center mt-8">
             <Button
               size="lg"
-              className="bg-gray-700 hover:bg-gray-800 transition-all duration-200 transform hover:scale-[1.01] text-white"
+              className="transition-all duration-200 transform hover:scale-[1.01] text-white"
               onClick={handleGetStarted}
             >
               {f({ id: "homepage.getStarted" })}
@@ -150,7 +150,7 @@ export default function Home() {
             <Button
               variant="outline"
               size="lg"
-              className="transition-all duration-200 transform hover:scale-[1.01] text-gray-700 border-gray-300"
+              className="transition-all duration-200 transform hover:scale-[1.01] text-gray-700"
               onClick={handleGetStarted}
             >
               {f({ id: "homepage.viewDemo" })}

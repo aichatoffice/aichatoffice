@@ -5,25 +5,12 @@ import ChatPage from './views/chatpage'
 import SettingPage from './views/settingpage'
 import LoginPage from './views/login'
 import { FileProvider } from './providers/FileContext'
-import { IntlProvider } from "react-intl"
-import zh from './locales/zh-CN'
-import en from './locales/en-Us'
+
 import './App.css'
-import { useState } from 'react'
-import "@fontsource/open-sans/400.css"; // Specify weight
-import "@fontsource/open-sans/400-italic.css";
 import { Toaster } from "sonner";
-
-const messages: Record<string, any> = {
-  'zh-CN': zh,
-  'en-US': en
-}
-
-const defaultLocale = navigator.language.split('-')[0] === 'zh' ? 'zh-CN' : 'en-US';
+import { LanguageProvider } from './providers/LanguageContext'
 
 export default function App() {
-  const [locale, setLocale] = useState(defaultLocale);
-
   const router = createHashRouter([
     {
       path: '/login',
@@ -33,7 +20,7 @@ export default function App() {
       path: '/',
       element: (
         <FileProvider>
-          <ClientLayout onLanguageChange={setLocale} currentLocale={locale} />
+          <ClientLayout />
         </FileProvider>
       ),
       children: [
@@ -58,9 +45,9 @@ export default function App() {
   ]);
 
   return (
-    <IntlProvider locale={locale} messages={messages[locale]} defaultLocale="zh-CN">
+    <LanguageProvider>
       <Toaster />
       <RouterProvider router={router} />
-    </IntlProvider>
+    </LanguageProvider>
   );
 }

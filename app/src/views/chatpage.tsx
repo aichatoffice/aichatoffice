@@ -63,7 +63,7 @@ export default function DocumentChat() {
   const { messages, input, setInput, handleInputChange, handleSubmit, stop, status, reload, error } = useChat({
     initialMessages: initialMessages,
     initialInput: f({ id: "chat.summary" }),
-    api: `${serverUrl}/api/chat/${conversationId}/chat?userId=${currentUserInfo.id}`,
+    api: `${serverUrl}/api/chat/${conversationId}/chat?userId=${currentUserInfo?.id}`,
     experimental_prepareRequestBody: ({ messages, id, requestBody }) => {
       console.log("requestBody", requestBody)
       return {
@@ -76,7 +76,7 @@ export default function DocumentChat() {
       debugger
       const info = {
         ...currentUserInfo,
-        freeTimes: currentUserInfo.freeTimes - 1
+        freeTimes: currentUserInfo?.freeTimes - 1
       }
       setUserInfo(info)
       setCurrentUserInfo(info)
@@ -461,7 +461,7 @@ export default function DocumentChat() {
                       <option value={20}>15</option>
                     </select>
                   </div>
-                  {currentUserInfo.freeTimes <= 0 && (
+                  {currentUserInfo?.freeTimes <= 0 && (
                     <div className="text-xs text-gray-400 w-40 text-center">{f({ id: "ai.warning" })} <a href="#/setting" className="text-blue-300">Pro</a></div>
                   )}
                 </div>
@@ -474,7 +474,7 @@ export default function DocumentChat() {
                     placeholder={f({ id: "chat.placeholder" })}
                     name="prompt"
                     value={input}
-                    disabled={currentUserInfo.freeTimes <= 0}
+                    disabled={currentUserInfo?.freeTimes <= 0}
                     onChange={(e) => {
                       handleInputChange(e);
                       setCurrentInput(e.target.value)
@@ -495,7 +495,7 @@ export default function DocumentChat() {
                     type="submit"
                     className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
                     onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
-                    disabled={!(input || status !== "ready") || currentUserInfo.freeTimes <= 0}
+                    disabled={!(input || status !== "ready") || currentUserInfo?.freeTimes <= 0}
                   >
                     {status == "submitted" || status == "streaming" ? (
                       <Square className="h-4 w-4" />
