@@ -1,22 +1,19 @@
 module aichatoffice
 
-go 1.21.1
+go 1.23.4
 
-toolchain go1.22.2
+toolchain go1.23.9
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.3.0
 	github.com/gotomicro/cetus/l v0.0.0-20241219021243-83a803a567c1
-	github.com/gotomicro/ego v1.2.2
-	github.com/json-iterator/go v1.1.12
-	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/samber/lo v1.39.0
+	github.com/gotomicro/ego v1.2.3
+	github.com/officesdk/go-sdk v0.0.0-20250424032850-c8f4e667930b
 	github.com/sashabaranov/go-openai v1.38.0
-	github.com/spf13/cast v1.4.1
 	github.com/spf13/cobra v1.8.1
-	github.com/syndtr/goleveldb v1.0.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/zap v1.24.0
 	gorm.io/driver/sqlite v1.5.7
@@ -51,13 +48,13 @@ require (
 	github.com/go-resty/resty/v2 v2.13.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.11.3 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -67,8 +64,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/onsi/ginkgo v1.14.0 // indirect
-	github.com/onsi/gomega v1.10.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
@@ -76,8 +71,10 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/samber/lo v1.39.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
+	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect

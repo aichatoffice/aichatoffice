@@ -46,7 +46,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="px-6 py-16 md:px-20 relative">
+      <section className="px-6 py-12 md:px-20 relative">
         {/* Decorative left border */}
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-pattern-left" />
         {/* Decorative right border */}
@@ -69,7 +69,7 @@ export default function Home() {
           <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
             {f({ id: "homepage.description" })}
           </p>
-          <div className="flex justify-center items-center gap-8 mb-12">
+          <div className="flex justify-center items-center gap-8 mb-8">
             <div className="flex flex-col items-center">
               <MessageSquare className="h-8 w-8 text-gray-700 mb-2" />
               <span className="text-sm text-gray-600">{f({ id: "homepage.chatInterface" })}</span>
@@ -95,7 +95,7 @@ export default function Home() {
             />
             <label
               htmlFor="file-upload"
-              className="block w-full aspect-[16/9] max-w-4xl mx-auto rounded-3xl border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-[#e3e6ff59] p-12 cursor-pointer transform hover:scale-[1.01]"
+              className="block w-full aspect-[16/9] max-w-4xl mx-auto rounded-3xl border-2 border-dashed border-gray-200 hover:border-gray-400 transition-all duration-300 bg-[#e3e6ff59] p-10 cursor-pointer transform hover:scale-[1.01]"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -138,7 +138,7 @@ export default function Home() {
             </label>
           </div>
 
-          <div className="flex gap-4 justify-center mt-8">
+          <div className="flex gap-4 justify-center mt-6">
             <Button
               size="lg"
               className="transition-all duration-200 transform hover:scale-[1.01] text-white"

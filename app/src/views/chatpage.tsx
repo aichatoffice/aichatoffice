@@ -1,16 +1,20 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, RefCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info, Settings } from "lucide-react"
+import { ChevronDown, ChevronUp, Copy, Send, Square, RefreshCcw, Info, Settings, X, MoveUpIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useParams } from "react-router-dom"
 import { useIntl } from "react-intl"
 import { useFiles } from "@/providers/FileContext"
 import { useToast } from "@/components/ui/use-toast"
 import * as pdfjsLib from 'pdfjs-dist'
-import Robot from "@/assets/robot.png"
+import Robot from "@/assets/robot.gif"
+import AIAssistant from "@/assets/ai_assistant.png"
 import { useChat } from '@ai-sdk/react';
 import { getUserInfo, setUserInfo } from "@/utils/electron"
-
+import { Textarea } from "@/components/ui/textarea"
+import { createSDK, FileType } from '@officesdk/web';
+import { useLanguage } from "@/providers/LanguageContext"
 const workerPath = `${import.meta.env.BASE_URL}pdf.worker.js`;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath;
@@ -24,7 +28,7 @@ export default function DocumentChat() {
   const { id: documentId = "" } = useParams()
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
-  const { getPreviewUrl, getServerUrl, getConversation } = useFiles()
+  const { getPreviewParams, getServerUrl, getConversation } = useFiles()
   const [conversationId, setConversationId] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
@@ -114,11 +118,13 @@ export default function DocumentChat() {
       if (!documentId) return;
       if (!isSubscribed) return;
       try {
-        const url = await getPreviewUrl(documentId);
+        const res = await getPreviewParams(documentId);
         if (!isSubscribed) return;
-        setPreviewUrl(url || "");
+        setEndpoint(res.endpoint)
+        setToken(res.token)
+        setFileExt(res.file.ext)
 
-        if (url) {
+        if (res.endpoint) {
           const conversation = await getConversation(documentId);
           if (!isSubscribed) return;
           setConversationId(conversation.conversationId);
@@ -221,14 +227,83 @@ export default function DocumentChat() {
     return formattedText
   }
 
+  const [endpoint, setEndpoint] = useState("")
+  const [fileExt, setFileExt] = useState("")
+  const [editor, setEditor] = useState<any>(null)
+  const [token, setToken] = useState("")
+  const { locale } = useLanguage()
+
+  function getFileTypeFromExt(ext: string) {
+    switch (ext) {
+      case ".doc":
+      case ".docx":
+        return FileType.Document
+      case ".ppt":
+      case ".pptx":
+        return FileType.Presentation
+      case ".xls":
+      case ".xlsx":
+        return FileType.Spreadsheet
+      case ".pdf":
+        return FileType.Pdf
+      default:
+        return 0
+    }
+  }
+
+  const loadSDK: RefCallback<HTMLElement> = (el) => {
+    if (el && endpoint && !editor) {
+      (async () => {
+        try {
+          const sdk = createSDK({
+            endpoint,
+            fileId: documentId,
+            mode: 'preview',
+            role: 'viewer',
+            lang: locale === 'en-US' ? 'en-US' : 'zh-CN',
+            root: el,
+            fileType: getFileTypeFromExt(fileExt),
+            token,
+            settings: {
+              menu: {
+                custom: [
+                  {
+                    name: 'test',
+                    type: 'button',
+                    label: '按钮测试',
+                    callback: () => {
+                      console.log('按钮测试');
+                    },
+                  },
+                ],
+              },
+            },
+            userQuery: {
+              userName: "demo",
+              userId: "1"
+            }
+          });
+          const connectedEditor = await sdk.connect();
+          setEditor(connectedEditor);
+          console.info(connectedEditor);
+        } catch (error) {
+          console.error('Failed to create SDK:', error);
+        }
+      })();
+    }
+  };
+
+
+
   return (
-    <div className="flex flex-col h-screen bg-white text-sm mt-0">
+    <div className="flex flex-col h-screen bg-[#EEF2FF] text-sm mt-0">
       <div className="flex flex-1 overflow-hidden">
         {/* Main Document View */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* {previewUrl} */}
-          {previewUrl ? (
-            <iframe src={previewUrl} className="w-full h-full" />
+          {endpoint ? (
+            <div style={{ width: "100%", height: "100vh" }} ref={loadSDK}>
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-500">{f({ id: "common.loading" })}</div>
           )}
@@ -236,13 +311,13 @@ export default function DocumentChat() {
 
         {/* Right Chat Panel*/}
         <div
-          className={`${isChatOpen ? "w-[280px] md:w-[340px]" : "w-0"} transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
+          className={`${isChatOpen ? "w-[280px] md:w-[310px]" : "w-0"} bg-[#EEF2FF] transition-all duration-300 relative flex flex-col h-full border-l border-gray-200`}
         >
           {/* 添加提示组件 */}
           {showHint && !isChatOpen && (
             <div
-              className="absolute right-20 top-7 bg-white shadow-lg rounded-lg p-3 z-10 animate-bounce
-              transition-opacity duration-500 ease-in-out opacity-100 w-[210px]"
+              className="absolute right-20 bottom-6 bg-white shadow-lg rounded-lg p-3 z-10 animate-bounce
+              transition-opacity duration-500 ease-in-out opacity-100 w-[140px]"
               onClick={() => setShowHint(false)}
               style={{
                 animation: 'bounce 1s infinite, fadeOut 0.5s ease-in-out 4.5s forwards'
@@ -260,33 +335,44 @@ export default function DocumentChat() {
               </div>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute -left-18 top-6 bg-black/5 rounded-full hover:bg-black/10 hover:text-white 
-            before:content-[''] before:absolute before:top-0 before:left-[-100%] before:w-full before:h-full 
-            before:bg-gradient-to-r before:from-transparent before:via-[#677894]/30 before:to-transparent 
-            hover:before:left-[100%] before:transition-all before:duration-500 overflow-hidden"
-            onClick={() => {
-              setIsChatOpen(!isChatOpen)
-              setShowHint(false) // 点击时关闭提示
-            }}
-          >
-            <img src={Robot} alt="robot" className={`w-7 h-7 transition-transform  ${isChatOpen ? "rotate-360" : ""}`} />
-          </Button>
+
+          {
+            !isChatOpen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -left-25 bottom-6 rounded-full w-25 h-12"
+                onClick={() => {
+                  setIsChatOpen(true)
+                  setShowHint(false) // 点击时关闭提示
+                }}
+              >
+                <img src={Robot} alt="robot" className={`w-full h-full`} />
+              </Button>
+            )
+          }
+
           <div className={`${isChatOpen ? "opacity-100 p-4" : "opacity-0"} transition-opacity flex-1  overflow-auto`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <img src={AIAssistant} alt="robot" className={`w-8 h-8`} />
+                <span className="text-[16px]">AI Assisant</span>
+              </div>
+              <X className="w-5 h-5 bg-gray-200 rounded-full p-1" onClick={() => setIsChatOpen(false)} />
+            </div>
             {messages.length === 0 ? (
-              <div className="space-y-4 text-sm">
+              <div className="space-y-4 text-sm text-[#41464B] bg-[#7A98F80D] border border-[#FFFFFFCC] rounded-xl p-4">
                 <div className="flex gap-3">
                   <div className="space-y-4">
-                    <p>{f({ id: "chat.greeting.1" })}</p>
+                    <p className="text-sm text-[#41464B]">{f({ id: "chat.assistant" })}</p>
+                    {/* <p>{f({ id: "chat.greeting.1" })}</p>
                     <p>{f({ id: "chat.greeting.2" })}</p>
                     <ul className="list-disc pl-4 space-y-2">
                       <li>{f({ id: "chat.greeting.3" })}</li>
                       <li>{f({ id: "chat.greeting.4" })}</li>
                       <li>{f({ id: "chat.greeting.5" })}</li>
                     </ul>
-                    <p>{f({ id: "chat.greeting.6" })}</p>
+                    <p>{f({ id: "chat.greeting.6" })}</p> */}
                   </div>
                 </div>
 
@@ -301,14 +387,10 @@ export default function DocumentChat() {
                       });
                     }, 0)
                   }}
-                  className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                  className="flex items-center gap-2 w-full px-3 py-2 hover:bg-[#6b6cff33] transition-colors text-left bg-[#FFFFFFCC] rounded-xl"
                 >
-                  <div className="w-5 h-5 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                    </svg>
-                  </div>
-                  <span>{f({ id: "chat.summary" })}</span>
+                  <span className="text-xl">😊</span>
+                  <span> {f({ id: "chat.summary" })}</span>
                 </button>
               </div>
             ) : (
@@ -319,8 +401,8 @@ export default function DocumentChat() {
                       <div className={`space-y-1 ${message.role === "user" ? "items-end" : ((messageStates[message.id]?.isStopped || messageStates[message.id]?.isError) ? "hidden" : "")} max-w-[calc(100%-40px)]`}>
                         <div
                           className={`rounded-2xl p-3 max-w-full ${message.role === "user"
-                            ? "bg-[#364153] text-white overflow-hidden"
-                            : "bg-gray-100"
+                            ? "bg-[#6B6CFF33] text-[#41464B] overflow-hidden"
+                            : "bg-[#FFFFFF4D] text-[#41464B] border border-[#FFFFFFCC]"
                             }`}
                         >
                           <div className="whitespace-pre-line text-sm max-w-full leading-relaxed">
@@ -375,14 +457,15 @@ export default function DocumentChat() {
                               </div>
                             </div>
                           </div>
+                          {message.role === "assistant" && (
+                            <div className="flex items-center gap-1 mt-2">
+                              <button className="p-1 hover:bg-gray-100 rounded">
+                                <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        {message.role === "assistant" && (
-                          <div className="flex items-center gap-1 mt-2">
-                            <button className="p-1 hover:bg-gray-100 rounded">
-                              <Copy className="w-4 h-4 text-gray-500" onClick={() => handleCopy(message.content)} />
-                            </button>
-                          </div>
-                        )}
+
                       </div>
                     </div>
                     {/* 加载状态 */}
@@ -444,65 +527,76 @@ export default function DocumentChat() {
           </div>
 
           {isChatOpen && (
-            <div className="p-4 pt-2 border-t border-gray-200">
+            <div className="p-4 pt-2 ">
               <div className="flex flex-col gap-2">
                 {/* 添加上下文选择器 */}
-                <div className="flex items-center gap-2 text-sm text-gray-600 ">
-                  <Settings className="h-4 w-4 text-gray-500" />
-                  <div className="border border-dashed border-gray-200 rounded-xl px-2 text-xs bg-gray-100">
-                    <span className="text-gray-500 text-xs">{f({ id: "chat.context" })}:</span>
-                    <select
-                      value={contextCount}
-                      onChange={(e) => setContextCount(Number(e.target.value))}
-                      className="rounded-xl px-1 py-1 text-xs focus:outline-none"
-                    >
-                      <option value={5}>5</option>
-                      <option value={10}>10</option>
-                      <option value={20}>15</option>
-                    </select>
-                  </div>
-                  {currentUserInfo?.freeTimes <= 0 && (
-                    <div className="text-xs text-gray-400 w-40 text-center">{f({ id: "ai.warning" })} <a href="#/setting" className="text-blue-300">Pro</a></div>
-                  )}
-                </div>
+
                 <form onSubmit={(e) => handleSubmit(e, {
                   body: {
                     customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
                   }
                 })} className="flex gap-2">
-                  <Input
-                    placeholder={f({ id: "chat.placeholder" })}
-                    name="prompt"
-                    value={input}
-                    disabled={currentUserInfo?.freeTimes <= 0}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      setCurrentInput(e.target.value)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault()
-                        handleSubmit(e, {
-                          body: {
-                            customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
-                          }
-                        })
-                      }
-                    }}
-                    className="rounded-xl border border-[#677894] bg-white focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                  <Button
-                    type="submit"
-                    className={`rounded-xl ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#364153]'} text-white`}
-                    onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
-                    disabled={!(input || status !== "ready") || currentUserInfo?.freeTimes <= 0}
-                  >
-                    {status == "submitted" || status == "streaming" ? (
-                      <Square className="h-4 w-4" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <div className="flex-1 bg-white rounded-xl">
+                    <Input
+                      placeholder={f({ id: "chat.placeholder" })}
+                      name="prompt"
+                      value={input}
+                      disabled={currentUserInfo?.freeTimes <= 0}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        setCurrentInput(e.target.value)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                          handleSubmit(e, {
+                            body: {
+                              customKey: (currentInput == f({ id: "chat.summary" }) || currentInput == "summary") ? "summary" : ""
+                            }
+                          })
+                        }
+                      }}
+                      className="inline-block border-none border-[#677894] focus-visible:ring-0 focus-visible:ring-offset-0 h-15"
+                    />
+                    <div className="px-3 py-1 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 ">
+                        <Settings className="h-4 w-4 text-gray-500" />
+                        <div className="flex items-center gap-2 border border-dashed border-gray-200 rounded-xl px-2 text-xs bg-gray-100">
+                          <span className="text-gray-500 text-xs">{f({ id: "chat.context" })}:</span>
+                          <Select defaultValue="5" onValueChange={(e) => setContextCount(Number(e))}>
+                            <SelectTrigger className="flex-1 border-none focus:shadow-none rounded-xl px-1 py-0 h-6 text-xs focus:outline-none hover:bg-transparent">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5">5</SelectItem>
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="20">15</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {currentUserInfo?.freeTimes <= 0 && (
+                          <div className="text-xs text-gray-400 w-40 text-center">{f({ id: "ai.warning" })} <a href="#/setting" className="text-blue-300">Pro</a></div>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className={`rounded-full ${(status == "submitted" || status == "streaming") ? 'bg-[#f93a37]' : 'bg-[#F4F5FF]'} text-[#41464B4D]`}
+                        onClick={() => (status == "submitted" || status == "streaming") && handleStop()}
+                        disabled={!(input || status !== "ready") || currentUserInfo?.freeTimes <= 0}
+                      >
+                        {status == "submitted" || status == "streaming" ? (
+                          <Square className="h-4 w-4" />
+                        ) : (
+                          <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M4.55117 1.14624C4.8036 0.909586 5.19641 0.909586 5.44884 1.14624L8.94884 4.42749C9.21325 4.67538 9.22665 5.09067 8.97876 5.35509C8.73088 5.6195 8.31558 5.63289 8.05117 5.38501L5.65625 3.13978L5.65625 10.375C5.65625 10.7374 5.36244 11.0312 5 11.0312C4.63757 11.0312 4.34375 10.7374 4.34375 10.375L4.34375 3.13978L1.94884 5.38501C1.68443 5.63289 1.26913 5.6195 1.02124 5.35509C0.773358 5.09068 0.786755 4.67538 1.05117 4.42749L4.55117 1.14624Z" fill="#41464B" fill-opacity="0.3" />
+                          </svg>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+
                 </form>
               </div>
             </div>

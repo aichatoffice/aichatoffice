@@ -11,10 +11,10 @@ import (
 
 // FileStore defines the abstraction of file storage and retrieval
 type FileStore interface {
-	GetFile(ctx context.Context, fileID string) (file dto.File, err error)
-	SetFile(ctx context.Context, f dto.File) error
-	DeleteFile(ctx context.Context, fileID string) error
-	GetFilesList(ctx context.Context) (files []dto.File, err error)
+	GetFileMeta(ctx context.Context, fileID string) (file dto.FileMeta, err error)
+	SetFileMeta(ctx context.Context, f dto.FileMeta) error
+	DeleteFileMeta(ctx context.Context, fileID string) error
+	GetFilesList(ctx context.Context) (files []dto.FileMeta, err error)
 }
 
 type AiConfigStore interface {

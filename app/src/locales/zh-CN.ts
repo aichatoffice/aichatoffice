@@ -7,6 +7,7 @@ export default {
   noTitle: "无标题",
   // chat
   "chat.placeholder": "随便问个问题...",
+  "chat.assistant": "我是你的助手。问我关于这份文档的任何问题。",
   "chat.greeting.1": "你好！很高兴见到你!",
   "chat.greeting.2": "看来你有一份文档需要讨论，我很乐意为你提供帮助。",
   "chat.greeting.3": "这份文档包含了一些有趣的主题和发现",
@@ -20,7 +21,7 @@ export default {
   "chat.error1": "发生错误, 请检查 ",
   "chat.error2": " 是否正确",
   "chat.aiConfig": "AI模型配置",
-  "chat.hint": "点击机器人图标开始AI对话",
+  "chat.hint": "点击开始AI对话",
   "chat.context": "上下文数",
   // 首页
   "homepage.title": "与任何文档聊天",

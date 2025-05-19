@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -30,7 +32,7 @@ func GetFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get fileId"})
 		return
 	}
-	file, err := invoker.FileService.GetFile(c, fileId)
+	file, err := invoker.FileService.GetFileMeta(c, fileId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file: " + err.Error()})
 		return
@@ -70,19 +72,56 @@ func UploadFile(c *gin.Context) {
 	}
 	mimeType := mimetype.Detect(content).String()
 	fileName := _file.Filename
-	f := dto.File{
+	ext := filepath.Ext(fileName)
+	f := dto.FileMeta{
 		Name:       fileName,
 		Size:       int64(len(content)),
 		FileID:     utils.GenFileGuid(),
 		Type:       mimeType,
 		CreateTime: time.Now().Unix(),
-		Content:    content,
+		Ext:        ext,
 	}
-	err = invoker.FileService.UploadFile(c, f)
+	err = invoker.FileService.UploadFile(c, f, content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "file upload failed" + err.Error()})
 	}
 	c.JSON(200, f)
+}
+
+func UploadPathFile(c *gin.Context) {
+	fileId := c.Param("guid")
+	path := c.Query("path")
+	outFile, err := os.Create(fmt.Sprintf("%s/%s%s", econf.GetString("case.filepath"), fileId, path))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": path + "file upload failed" + err.Error()})
+	}
+	// 将 Body 直接写入文件
+	if _, err := io.Copy(outFile, c.Request.Body); err != nil {
+		c.String(http.StatusInternalServerError, "failed to write file: %v", err)
+		return
+	}
+	c.JSON(200, nil)
+}
+
+func DownloadPathFile(c *gin.Context) {
+	fileId := c.Param("guid")
+	file, err := invoker.FileService.GetFileMeta(c, fileId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "get file error: " + err.Error()})
+		return
+	}
+	path := c.Query("path")
+	disposition := c.Query("disposition")
+	if disposition == "" {
+		disposition = "attachment"
+	}
+	content, err := os.ReadFile(fmt.Sprintf("%s/%s%s", econf.GetString("case.filepath"), fileId, path))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": path + "file read failed" + err.Error()})
+	}
+	c.Header("Content-Type", file.Type)
+	c.Header("Content-Disposition", fmt.Sprintf("%s; filename=\"%s\"", disposition, file.Name))
+	c.Data(200, file.Type, content)
 }
 
 func DownloadFile(c *gin.Context) {
@@ -91,25 +130,36 @@ func DownloadFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get fileId"})
 		return
 	}
-	file, err := invoker.FileService.GetFile(c, fileId)
+	file, err := invoker.FileService.GetFileMeta(c, fileId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "get file error: " + err.Error()})
+		return
+	}
+	content, err := invoker.FileService.GetFileContent(c, fileId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "get file content error: " + err.Error()})
 		return
 	}
 
 	c.Header("Content-Type", file.Type)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.Name))
-	c.Data(200, file.Type, file.Content)
+	c.Data(200, file.Type, content)
 }
 
-func GetPreviewUrl(c *gin.Context) {
+func GetPageParams(c *gin.Context) {
 	fileId := c.Param("guid")
 	if fileId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get fileId"})
 		return
 	}
-	url := fmt.Sprintf("%s/api/file/page?file_id=%s&token=null", econf.GetString("host.previewUrlPrefix"), fileId)
+	file, err := invoker.FileService.GetFileMeta(c, fileId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file: " + err.Error()})
+		return
+	}
 	c.JSON(200, gin.H{
-		"url": url,
+		"file":     file,
+		"endpoint": econf.GetString("host.previewUrlPrefix"),
+		"token":    utils.SignJWT(1, 0),
 	})
 }

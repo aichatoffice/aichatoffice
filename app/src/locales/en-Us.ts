@@ -7,6 +7,7 @@ export default {
   noTitle: "No Title",
   // chat
   "chat.placeholder": "Ask anything...",
+  "chat.assistant": "I'm your assistant. Ask me anything about this document.",
   "chat.greeting.1": "Hello! Nice to meet you!",
   "chat.greeting.2": "It seems you have a document to discuss. I'm happy to help you.",
   "chat.greeting.3": "This document contains some interesting topics and discoveries.",
@@ -20,7 +21,7 @@ export default {
   "chat.error1": "An error occurred, please check if the ",
   "chat.error2": " configuration is correct",
   "chat.aiConfig": "AI model configuration",
-  "chat.hint": "Click the robot icon to start AI chat",
+  "chat.hint": "Click to start AI chat",
   "chat.context": "Context number",
   // 首页
   "homepage.title": "Chat with any Document",

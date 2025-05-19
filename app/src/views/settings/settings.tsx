@@ -130,7 +130,7 @@ function AccountSettings() {
   const [user, setUser] = useState<any>(null)
   useEffect(() => {
     const checkUserInfo = async () => {
-      let userInfo = null
+      let userInfo: any = null
       if (isElectron()) {
         // 在 Electron 环境中从 electron-store 获取用户信息
         try {

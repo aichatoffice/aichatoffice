@@ -30,7 +30,7 @@ func NewSqliteStore() (*SqliteStore, error) {
 
 func (s *SqliteStore) AutoMigrate() error {
 	// 文件存储
-	err := s.DB.AutoMigrate(&dto.File{})
+	err := s.DB.AutoMigrate(&dto.FileMeta{})
 	if err != nil {
 		return err
 	}

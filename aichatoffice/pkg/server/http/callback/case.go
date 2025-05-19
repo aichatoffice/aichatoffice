@@ -1,203 +1,277 @@
 package callback
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gotomicro/ego/core/econf"
-
 	"aichatoffice/pkg/invoker"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gotomicro/cetus/l"
+	"github.com/gotomicro/ego/core/elog"
+	"github.com/officesdk/go-sdk/officesdk"
 )
 
-// todo 现在是写死的
-func Verify(c *gin.Context) {
-	// fileId := c.Param("fileId")
-	// invoker.Leveldb.GetFile(fileId)
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"currentUserInfo": gin.H{
-				"id":     "123456",
-				"name":   "Void",
-				"avatar": "",
-				"email":  "",
-			},
+type FileProvider struct{}
+
+func (f *FileProvider) VerifyFile(c *gin.Context, fileId string) (*officesdk.VerifyResponse, error) {
+	_userId, _ := c.Get("userId")
+	userId := fmt.Sprintf("%d", _userId)
+	return &officesdk.VerifyResponse{
+		CurrentUserInfo: officesdk.UserInfo{
+			ID:    userId,
+			Name:  "demo",
+			Email: "a@b.com",
 		},
-	})
+	}, nil
 }
 
-type FileResponse struct {
-	ID         string `json:"id"`
-	Size       int64  `json:"size"`
-	Version    int64  `json:"version"`
-	ModifierID string `json:"modifierId"`
-	ModifyTime int    `json:"modifyTime"`
-	CreateTime int64  `json:"createTime"`
-	CreatorID  string `json:"creatorId"`
-	Name       string `json:"name"`
-}
-
-func GetFile(c *gin.Context) {
-	fileId := c.Param("fileId")
-	file, err := invoker.FileStore.GetFile(c, fileId)
+func (f *FileProvider) GetFile(c *gin.Context, fileId string) (*officesdk.FileResponse, error) {
+	file, err := invoker.FileService.GetFileMeta(c, fileId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "0",
-			"message": err.Error(),
-		})
-		return
+		return nil, err
 	}
-
-	response := FileResponse{
-		ID:         file.FileID,
-		Size:       file.Size,
-		Version:    file.Version,
-		CreateTime: file.CreateTime,
-		CreatorID:  file.CreatorId,
+	fromSDK := invoker.FileService.CheckContentExist(c, fileId)
+	return &officesdk.FileResponse{
+		ID:         file.ID,
 		Name:       file.Name,
-	}
-
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": response,
-	})
+		Version:    uint32(file.Version),
+		CreateTime: file.CreateTime,
+		ModifyTime: file.ModifyTime,
+		CreatorID:  file.CreatorId,
+		ModifierID: file.ModifierId,
+		FromSDK:    fromSDK,
+	}, nil
 }
 
-func GetFileDownload(c *gin.Context) {
-	fileId := c.Param("fileId")
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"url": invoker.FileService.GetDownloadUrl(fileId),
-		},
-	})
+func (f *FileProvider) GetFileDownload(c *gin.Context, fileId string) (*officesdk.DownloadResponse, error) {
+	downloadUrl := invoker.FileService.GetDownloadUrl(fileId)
+	elog.Info("GetFileDownload", l.S("downloadUrl", downloadUrl))
+	return &officesdk.DownloadResponse{
+		URL: downloadUrl,
+	}, nil
 }
 
-func GetFileWatermark(c *gin.Context) {
-	fileId := c.Param("fileId")
+func (f *FileProvider) GetFileWatermark(c *gin.Context, fileId string) (*officesdk.WatermarkResponse, error) {
 	// todo 暂时无水印设置功能
-	c.JSON(200, gin.H{
-		"code":    0,
-		"message": "",
-		"data": gin.H{
-			"fill_style": "rgba( 192, 192, 192, 0.6 )",
-			"font":       "bold 20px Serif",
-			"horizontal": 50,
-			"rotate":     -0.7853982,
-			"type":       1,
-			"value":      fmt.Sprintf("%s\n%s", fileId, time.Now().Format("2006-01-02 12:01:01")),
-			"vertical":   100,
-		},
-	})
+	return &officesdk.WatermarkResponse{
+		Type:       1,
+		Value:      fmt.Sprintf("%s\n%s", fileId, time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02 15:04:05")),
+		FillStyle:  "rgba( 192, 192, 192, 0.6 )",
+		Font:       "bold 20px Serif",
+		Rotate:     -0.7853982,
+		Horizontal: 50,
+		Vertical:   100,
+	}, nil
 }
 
-// UploadAddress 获取上传地址 todo
-func UploadAddress(c *gin.Context) {
-	fileId := c.Param("fileId")
-	c.JSON(200, gin.H{
-		"code":    0,
-		"message": "",
-		"data": gin.H{
-			"url":            fmt.Sprintf("%s/v1/callback/files/%s/upload", econf.GetString("host.downloadUrlPrefix"), fileId),
-			"file_field_key": "file",
-			"params": gin.H{
-				"AccessKeyId": "",
-			},
-		},
-	})
+type UploadBody struct {
+	ObjectName  string            `json:"object_name"`
+	ContentType string            `json:"content_type"`
+	Digest      map[string]string `json:"digest"`
 }
 
-func UploadFile(c *gin.Context) {
-	// fileId := c.Param("fileId")
-	// _file, err := c.FormFile("file")
-	// if err != nil {
-	// 	c.JSON(400, gin.H{"error": "Failed to get file from form"})
-	// 	return
-	// }
-	// file, err := _file.Open()
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"message": "file open failed"})
-	// 	return
-	// }
-	// defer file.Close()
-	// content, err := io.ReadAll(file)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"message": "file read failed"})
-	// }
-	// mimeType := mimetype.Detect(content).String()
-	// fileName := _file.Filename
-	// f := dto.File{
-	// 	Name:       fileName,
-	// 	Size:       int64(len(content)),
-	// 	FileID:         fmt.Sprintf("convert_%s", fileId),
-	// 	Type:       mimeType,
-	// 	CreateTime: time.Now().Unix(),
-	// 	Content:    content,
-	// }
-	// err = invoker.FileService.UploadFile(c, f)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"message": "file upload failed" + err.Error()})
-	// }
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": gin.H{},
-	})
-}
-
-// UploadComplete 上传完成后, 回调通知上传结果 todo
-func UploadComplete(c *gin.Context) {
-	fileId := c.Param("fileId")
-	file, _ := invoker.FileService.GetFile(c, fileId)
-
-	response := FileResponse{
-		ID:         file.FileID,
-		Size:       file.Size,
-		Version:    file.Version,
-		CreateTime: file.CreateTime,
-		CreatorID:  file.CreatorId,
-		Name:       file.Name,
+// GetUploadURL 上传文件转码信息
+func (f *FileProvider) GetUploadURL(c *gin.Context, fileId string) (*officesdk.UploadURLResponse, error) {
+	body := UploadBody{}
+	err := c.BindJSON(&body)
+	if err != nil || body.ObjectName == "" {
+		elog.Error("GetUploadURL body err: ", l.E(err))
+		return nil, fmt.Errorf("parameter parsing error %w", err)
 	}
 
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": response,
-	})
+	url := invoker.FileService.GetUploadPathUrl(fileId, body.ObjectName)
+
+	return &officesdk.UploadURLResponse{
+		URL:    url,
+		Method: "PUT",
+		Headers: map[string]string{
+			"Content-Type": body.ContentType,
+			"Content-MD5":  body.Digest["md5"], // 目前只支持md5
+		},
+		Params: map[string]string{
+			"X-Test-Token": "test",
+		},
+		CompletionParams: map[string]string{
+			"test1": "test1",
+			"test2": "test2",
+			"test3": "test3",
+		},
+	}, nil
 }
 
-// OpenAIConfig 定义OpenAI配置结构
-type OpenAIConfig struct {
-	AIIcon string      `toml:"aiIcon"`
-	LLM    []LLMConfig `toml:"llm"`
+// CompleteUpload 上传文件转码完成
+func (f *FileProvider) CompleteUpload(c *gin.Context, fileId string) (*officesdk.UploadCompletionResponse, error) {
+	file, _ := invoker.FileService.GetFileMeta(c, fileId)
+	// 打印请求参数
+	elog.Info("CompleteUpload request params",
+		l.S("file_id", fileId),
+		l.S("object_name", c.Query("object_name")),
+		l.S("object_size", c.Query("object_size")),
+		l.S("content_type", c.Query("content_type")),
+	)
+	// 读取请求体
+	var requestBody map[string]interface{}
+	if err := c.ShouldBindJSON(&requestBody); err == nil {
+		elog.Info("CompleteUpload request body",
+			l.A("request", requestBody["request"]),
+			l.A("digest", requestBody["digest"]),
+			l.A("completion_params", requestBody["completion_params"]),
+		)
+	}
+	// 打印响应参数
+	elog.Info("CompleteUpload response",
+		l.A("response", requestBody["response"]),
+		l.S("status_code", c.Query("status_code")),
+		l.A("headers", requestBody["headers"]),
+		l.A("body", requestBody["body"]),
+	)
+	return &officesdk.UploadCompletionResponse{
+		ID:         file.ID,
+		Version:    int(file.Version),
+		CreateTime: file.CreateTime,
+		ModifyTime: file.ModifyTime,
+		CreatorID:  file.CreatorId,
+		ModifierID: file.ModifierId,
+	}, nil
 }
 
-// LLMConfig 定义LLM配置结构
-type LLMConfig struct {
-	BaseUrl        string `toml:"baseUrl"`
-	TextModel      string `toml:"textModel"`
-	Token          string `toml:"token"`
-	Name           string `toml:"name"`
-	ProxyUrl       string `toml:"proxyUrl"`
-	Subservice     string `toml:"subservice"`
-	InputMaxToken  int    `toml:"inputMaxToken"`
-	OutputMaxToken int    `toml:"outputMaxToken"`
+// GetDownloadURL 下载文件转码信息
+func (f *FileProvider) GetDownloadURL(c *gin.Context, fileId string) (*officesdk.DownloadResponse, error) {
+	objName := c.Query("object_name")
+	if objName == "" {
+		return nil, errors.New("object_name is required")
+	}
+	// expS := c.Query("expires_in")
+	disposition := c.Query("disposition")
+	// var exp int64
+	// var err error
+	// if expS != "" {
+	// 	exp, err = strconv.ParseInt(expS, 10, 64)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+	url := invoker.FileService.GetDownloadPathUrl(fileId, objName, disposition)
+	elog.Info("GetDownloadUrl", l.S("name", objName), l.S("url", url))
+	return &officesdk.DownloadResponse{
+		URL: url,
+	}, nil
 }
 
-func AIConfig(c *gin.Context) {
+// GetAssetUploadURL 上传文件附件资源信息
+func (f *FileProvider) GetAssetUploadURL(c *gin.Context, fileId string) (*officesdk.AssetUploadURLResponse, error) {
+	body := UploadBody{}
+	err := c.BindJSON(&body)
+	if err != nil || body.ObjectName == "" {
+		elog.Error("GetAssetUploadURL body err: ", l.E(err))
+		return nil, fmt.Errorf("parameter parsing error %w", err)
+	}
+	url := invoker.FileService.GetUploadPathUrl(fileId, body.ObjectName)
+
+	return &officesdk.AssetUploadURLResponse{
+		URL:    url,
+		Method: "PUT",
+		Headers: map[string]string{
+			"Content-Type": body.ContentType,
+			"Content-MD5":  body.Digest["md5"], // 目前只支持md5
+		},
+		Params: map[string]string{
+			"X-Test-Token": "test",
+		},
+		CompletionParams: map[string]string{
+			"test1": "test1",
+			"test2": "test2",
+			"test3": "test3",
+		},
+	}, nil
+}
+
+// AssetCompleteUpload 上传文件附件资源完成
+func (f *FileProvider) AssetCompleteUpload(c *gin.Context, fileId string) (*officesdk.UploadCompletionResponse, error) {
+	file, _ := invoker.FileService.GetFileMeta(c, fileId)
+	// 打印请求参数
+	elog.Info("AssetCompleteUpload request params",
+		l.S("file_id", fileId),
+		l.S("object_name", c.Query("object_name")),
+		l.S("object_size", c.Query("object_size")),
+		l.S("content_type", c.Query("content_type")),
+	)
+	// 读取请求体
+	var requestBody map[string]interface{}
+	if err := c.ShouldBindJSON(&requestBody); err == nil {
+		elog.Info("AssetCompleteUpload request body",
+			l.A("request", requestBody["request"]),
+			l.A("digest", requestBody["digest"]),
+			l.A("completion_params", requestBody["completion_params"]),
+		)
+	}
+	// 打印响应参数
+	elog.Info("AssetCompleteUpload response",
+		l.A("response", requestBody["response"]),
+		l.S("status_code", c.Query("status_code")),
+		l.A("headers", requestBody["headers"]),
+		l.A("body", requestBody["body"]),
+	)
+	return &officesdk.UploadCompletionResponse{
+		ID:         file.ID,
+		Version:    int(file.Version),
+		CreateTime: file.CreateTime,
+		ModifyTime: file.ModifyTime,
+		CreatorID:  file.CreatorId,
+		ModifierID: file.ModifierId,
+	}, nil
+}
+
+// GetAssetDownloadURL 下载文件附件资源信息
+func (f *FileProvider) GetAssetDownloadURL(c *gin.Context, fileId string) (*officesdk.DownloadResponse, error) {
+	objName := c.Query("object_name")
+	if objName == "" {
+		return nil, errors.New("object_name is required")
+	}
+	// expS := c.Query("expires_in")
+	disposition := c.Query("disposition")
+	// var exp int64
+	// var err error
+	// if expS != "" {
+	// 	exp, err = strconv.ParseInt(expS, 10, 64)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+	url := invoker.FileService.GetDownloadPathUrl(fileId, objName, disposition)
+	elog.Info("GetAssetDownloadURL", l.S("name", objName), l.S("url", url))
+	return &officesdk.DownloadResponse{
+		URL: url,
+	}, nil
+}
+
+// AIProvider 实现 AI 相关接口
+type AIProvider struct{}
+
+func (p *AIProvider) AIConfig(c *gin.Context) (*officesdk.AIConfigResponse, error) {
 	aiConfig, err := invoker.AiConfigSvc.GetAIConfig(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "0",
 			"message": err.Error(),
 		})
-		return
+		return nil, err
 	}
-	c.JSON(200, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"aiIcon":  econf.GetString("openai.aiIcon"),
-			"llmList": aiConfig,
-		},
-	})
+	openaiConfig := officesdk.AIConfigResponse{}
+	for _, v := range aiConfig {
+		openaiConfig.LLMList = append(openaiConfig.LLMList, officesdk.LLMConfig{
+			Name:           v.Name,
+			BaseURL:        v.BaseUrl,
+			TextModel:      v.TextModel,
+			Token:          v.Token,
+			InputMaxToken:  v.InputMaxToken,
+			OutputMaxToken: v.OutputMaxToken,
+			ProxyURL:       v.ProxyUrl,
+			Subservice:     v.Subservice,
+		})
+	}
+	return &openaiConfig, nil
 }

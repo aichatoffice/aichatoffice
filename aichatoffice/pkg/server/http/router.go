@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/gotomicro/ego/server/egin"
+	"github.com/officesdk/go-sdk/officesdk"
 
 	"aichatoffice/pkg/invoker"
 	"aichatoffice/pkg/server/http/api"
@@ -21,24 +22,20 @@ func ServeHTTP() *egin.Component {
 		apiRouters.DELETE("/file/:guid", api.DeleteFile)
 		apiRouters.POST("/file", api.UploadFile)
 		apiRouters.GET("/:guid/download", api.DownloadFile)
-		apiRouters.GET("/:guid/preview/url", api.GetPreviewUrl)
+		apiRouters.GET("/:guid/page", api.GetPageParams)
+
+		apiRouters.PUT("/:guid/upload/path", api.UploadPathFile)
+		apiRouters.GET("/:guid/download/path", api.DownloadPathFile)
 	}
-	// 回调接口
-	callbackRouter := r.Group("/v1/callback")
-	{
-		// 鉴权
-		callbackRouter.GET("/verify/:fileId", callback.Verify)
-		// 预览回调
-		callbackRouter.GET("/files/:fileId", callback.GetFile)
-		callbackRouter.GET("/files/:fileId/download", callback.GetFileDownload)
-		callbackRouter.GET("/files/:fileId/watermark", callback.GetFileWatermark)
-		// 编辑回调
-		callbackRouter.POST("/files/:fileId/upload/address", callback.UploadAddress)
-		callbackRouter.POST("/files/:fileId/upload/complete", callback.UploadComplete)
-		callbackRouter.PUT("/files/:fileId/upload", callback.UploadFile)
-		// ai 回调
-		callbackRouter.GET("/chat/aiConfig", callback.AIConfig)
-	}
+
+	// 为 officesdk 添加鉴权中间件
+	authMiddleware := middlewares.Auth()
+	r.Use(authMiddleware)
+	officesdk.NewServer(officesdk.Config{
+		FileProvider: &callback.FileProvider{},
+		AIProvider:   &callback.AIProvider{},
+		Prefix:       "",
+	}, r.Engine)
 
 	// ai-chat路由
 	apiGroup := r.Group("/api")

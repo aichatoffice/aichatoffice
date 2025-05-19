@@ -18,7 +18,7 @@ interface FileContextType {
   getFile: () => Promise<void>
   uploadFile: (file: File) => Promise<void>
   deleteFile: (id: string) => Promise<void>
-  getPreviewUrl: (id: string) => Promise<string>
+  getPreviewParams: (id: string) => Promise<any>
   filesLoading: boolean
   getFileById: (id: string) => Promise<FileItem>
   getServerUrl: () => Promise<string>
@@ -139,12 +139,12 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const getPreviewUrl = async (id: string): Promise<string> => {
+  const getPreviewParams = async (id: string): Promise<any> => {
     try {
       const data = await apiRequest({
-        path: `/showcase/${id}/preview/url`
+        path: `/showcase/${id}/page`
       })
-      return data?.url
+      return data
     } catch (error) {
       console.error('Error getting preview url:', error)
       return ""
@@ -190,7 +190,7 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
         getFile,
         uploadFile,
         deleteFile,
-        getPreviewUrl,
+        getPreviewParams,
         filesLoading,
         getFileById,
         getServerUrl,
